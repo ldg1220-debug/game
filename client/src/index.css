@@ -1,0 +1,93 @@
+@import 'tailwindcss';
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap');
+
+@theme {
+  --font-heading: 'Cinzel', serif;
+  --font-body: 'Poppins', system-ui, sans-serif;
+
+  --color-ink-950: #0a0a1a;
+  --color-ink-900: #10101f;
+  --color-ink-800: #171730;
+  --color-ink-700: #1f1f42;
+  --color-ink-600: #2a2a56;
+  --color-ink-500: #3d3d78;
+
+  --color-gold-500: #d4af37;
+  --color-gold-400: #e6c866;
+  --color-gold-300: #f0dc9a;
+
+  --color-elem-fire: #e2543f;
+  --color-elem-water: #3f8fe2;
+  --color-elem-earth: #5aa858;
+  --color-elem-wind: #d9c04a;
+  --color-elem-none: #9298a8;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background: radial-gradient(ellipse at top, #1c1c3d 0%, #0a0a1a 70%);
+  color: #e8e6f5;
+  min-height: 100svh;
+}
+
+h1,
+h2,
+h3,
+.font-heading {
+  font-family: var(--font-heading);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-ink-500);
+  border-radius: 4px;
+}
+
+.panel {
+  background: linear-gradient(180deg, rgba(31, 31, 66, 0.9), rgba(16, 16, 31, 0.95));
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+.particle {
+  position: absolute;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(230, 200, 102, 0.9), rgba(230, 200, 102, 0));
+  pointer-events: none;
+  animation: float-up linear infinite;
+}
+
+@keyframes float-up {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  90% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(-120px) scale(0.4);
+    opacity: 0;
+  }
+}
