@@ -1,4 +1,20 @@
-import { ELEMENT_COLOR, type CoreElement } from '../lib/gameTypes';
+import { ELEMENT_PALETTE, type CoreElement } from '../lib/gameTypes';
+
+/**
+ * 펫 모션. 완성도 가이드 3.1절의 6종을 프레임 수·시간 스펙에 맞춰 구현한다.
+ * 래스터 스프라이트 시트 대신 SVG 전체에 CSS 변형을 걸어, 42종 전부에
+ * 추가 에셋 없이 같은 모션이 적용되도록 했다.
+ */
+export type PetMotion = 'idle' | 'walk' | 'attack' | 'hurt' | 'faint' | 'victory';
+
+const MOTION_CLASS: Record<PetMotion, string> = {
+  idle: 'pet-idle',
+  walk: 'pet-walk',
+  attack: 'pet-attack',
+  hurt: 'pet-hurt',
+  faint: 'pet-faint',
+  victory: 'pet-victory',
+};
 
 /**
  * 펫 형상 아트. 종(shapeId)이 실루엣을, 속성이 색을 결정한다.
@@ -33,8 +49,9 @@ function shade(hex: string, amount: number): string {
 }
 
 function paletteFor(element: CoreElement): Palette {
-  const base = ELEMENT_COLOR[element];
-  return { base, dark: shade(base, -0.35), light: shade(base, 0.22), pale: shade(base, 0.55) };
+  // 가이드 2.3절의 4단계 팔레트를 스프라이트의 base/dark/light/pale에 대응시킨다
+  const p = ELEMENT_PALETTE[element];
+  return { base: p.main, dark: p.dark, light: p.sub, pale: p.accent };
 }
 
 /** 좌우 한 쌍의 눈. 대부분의 형상이 공유한다. */
@@ -828,26 +845,43 @@ export function PetSprite({
   size = 64,
   silhouette,
   className,
+  motion,
+  flipped,
+  label,
 }: {
   shapeId: number;
   element: CoreElement;
   size?: number;
   silhouette?: boolean;
   className?: string;
+  motion?: PetMotion;
+  /** 좌우 반전. 모션 키프레임이 반전을 유지하도록 클래스로 처리한다. */
+  flipped?: boolean;
+  /** 지정하면 장식용이 아닌 의미 있는 이미지로 노출한다 */
+  label?: string;
 }) {
   const art = ART[shapeId] ?? ART[1];
   const palette = silhouette
     ? { base: '#2a2a56', dark: '#1f1f42', light: '#33336a', pale: '#3d3d78' }
     : paletteFor(element);
 
+  const classes = [
+    className,
+    motion ? MOTION_CLASS[motion] : '',
+    flipped ? 'pet-flip' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <svg
       viewBox="0 0 64 64"
       width={size}
       height={size}
-      className={className}
+      className={classes || undefined}
       role="img"
-      aria-hidden="true"
+      aria-hidden={label ? undefined : true}
+      aria-label={label}
       shapeRendering="geometricPrecision"
     >
       {art(palette)}

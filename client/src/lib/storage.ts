@@ -3,8 +3,8 @@ import { SAVE_VERSION, type GameState } from './gameTypes';
 const STORAGE_KEY = 'stoneage-chronicles-save';
 
 /**
- * v1 → v2 마이그레이션.
- * v1은 펫이 elementPrimary/elementSecondary/secondaryRatio를 들고 있었고,
+ * v1/v2 → v3 마이그레이션.
+ * v1은 펫이 elementPrimary/elementSecondary/secondaryRatio를 들고 있었고, v2는 필드 좌표가 없었다.
  * 도감이 (형상 × 속성) 단위였으며, 스킬·테이머 HP·지역 개념이 없었다.
  * 구조가 근본적으로 달라 안전하게 되살릴 수 없는 부분이 많으므로,
  * 되살릴 수 있는 것(플레이어 진행도·보유 아이템)만 옮기고 펫은 새로 시작한다.
@@ -33,6 +33,8 @@ function migrate(raw: Record<string, unknown>): GameState | null {
     antidotes: 2,
     evolutionStones: 1,
     pvpRanking: typeof raw.pvpRanking === 'number' ? raw.pvpRanking : 1000,
+    fieldPos: {},
+    openedTreasures: [],
   };
 }
 
@@ -45,6 +47,14 @@ export function loadGame(): { state: GameState | null; migrated: boolean } {
     const version = typeof parsed.version === 'number' ? parsed.version : 1;
 
     if (version === SAVE_VERSION) return { state: parsed as unknown as GameState, migrated: false };
+
+    // v2 → v3은 필드 좌표·보물 기록만 추가됐다. 펫 구조가 같으므로 그대로 이어받고
+    // 빠진 필드는 GameContext의 hydrate가 기본값으로 채운다.
+    if (version === 2) {
+      return { state: { ...(parsed as unknown as GameState), version: SAVE_VERSION }, migrated: false };
+    }
+
+    // v1은 펫의 원소·스킬 구조가 근본적으로 달라 복원할 수 없다.
     return { state: migrate(parsed), migrated: true };
   } catch {
     return { state: null, migrated: false };

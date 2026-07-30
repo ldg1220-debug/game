@@ -25,12 +25,28 @@ export const ELEMENT_LABEL: Record<Element, string> = {
   none: '무',
 };
 
+/** 완성도 가이드 2.3절 팔레트. 주색/보조색/강조색/어두운색 4단계. */
+export interface ElementPalette {
+  main: string;
+  sub: string;
+  accent: string;
+  dark: string;
+}
+
+export const ELEMENT_PALETTE: Record<Element, ElementPalette> = {
+  fire: { main: '#FF6B35', sub: '#FF8C42', accent: '#FFD700', dark: '#CC5500' },
+  water: { main: '#0099FF', sub: '#00CCFF', accent: '#E0F7FF', dark: '#0066CC' },
+  earth: { main: '#66BB6A', sub: '#81C784', accent: '#C8E6C9', dark: '#2E7D32' },
+  wind: { main: '#FFD700', sub: '#FFEB3B', accent: '#FFF9C4', dark: '#FBC02D' },
+  none: { main: '#9E9E9E', sub: '#BDBDBD', accent: '#F5F5F5', dark: '#616161' },
+};
+
 export const ELEMENT_COLOR: Record<Element, string> = {
-  fire: '#e2543f',
-  water: '#3f8fe2',
-  earth: '#5aa858',
-  wind: '#d9c04a',
-  none: '#9298a8',
+  fire: ELEMENT_PALETTE.fire.main,
+  water: ELEMENT_PALETTE.water.main,
+  earth: ELEMENT_PALETTE.earth.main,
+  wind: ELEMENT_PALETTE.wind.main,
+  none: ELEMENT_PALETTE.none.main,
 };
 
 /** 배분에서 포인트가 가장 높은 원소. 스프라이트 색과 대표 속성 표시에 쓴다. */
@@ -217,7 +233,7 @@ export interface Region {
 }
 
 /** 세이브 구조가 바뀌면 올린다. 불일치 시 storage에서 마이그레이션한다. */
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 export interface GameState {
   version: number;
@@ -233,6 +249,10 @@ export interface GameState {
   antidotes: number;
   evolutionStones: number;
   pvpRanking: number;
+  /** 지역별 필드 위치 (타일 좌표). 지역을 다시 찾아도 있던 자리에서 시작한다. */
+  fieldPos: Record<string, { x: number; y: number }>;
+  /** 이미 연 보물상자 id */
+  openedTreasures: string[];
 }
 
 export type PokeballType = 'normal' | 'good' | 'super' | 'master';

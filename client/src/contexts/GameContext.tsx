@@ -12,6 +12,16 @@ import { addExperience, evolvePet, evolutionTarget, expToNextLevel, getMaxHp, ta
 import { POKEBALLS } from '../lib/captureEngine';
 import { loadGame, saveGame, clearSave } from '../lib/storage';
 
+/** 보물상자 내용물 */
+type TreasureLoot = {
+  message: string;
+  gold?: number;
+  potion?: number;
+  stone?: number;
+  pokeball?: PokeballType;
+  qty?: number;
+};
+
 function buildInitialPokedex() {
   return PET_SHAPES.map((shape) => ({
     shapeId: shape.id,
@@ -36,6 +46,8 @@ function defaultState(): GameState {
     antidotes: 2,
     evolutionStones: 1,
     pvpRanking: 1000,
+    fieldPos: {},
+    openedTreasures: [],
   };
 }
 
@@ -83,6 +95,8 @@ interface GameContextValue {
   setRegion: (regionId: string) => void;
   unlockRegion: (regionId: string) => void;
   adjustPvpRanking: (delta: number) => void;
+  setFieldPos: (regionId: string, pos: { x: number; y: number }) => void;
+  openTreasure: (id: string, loot: TreasureLoot) => void;
   resetGame: () => void;
   playerExpToNext: number;
 }
@@ -360,6 +374,29 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const adjustPvpRanking = (delta: number) =>
     setState((s) => ({ ...s, pvpRanking: Math.max(0, s.pvpRanking + delta) }));
 
+  const setFieldPos = (regionId: string, pos: { x: number; y: number }) =>
+    setState((s) =>
+      s.fieldPos[regionId]?.x === pos.x && s.fieldPos[regionId]?.y === pos.y
+        ? s
+        : { ...s, fieldPos: { ...s.fieldPos, [regionId]: pos } },
+    );
+
+  /** 보물상자를 열고 내용물을 지급한다. 이미 연 상자는 무시한다. */
+  const openTreasure = (id: string, loot: TreasureLoot) =>
+    setState((s) => {
+      if (s.openedTreasures.includes(id)) return s;
+      return {
+        ...s,
+        openedTreasures: [...s.openedTreasures, id],
+        player: { ...s.player, gold: s.player.gold + (loot.gold ?? 0) },
+        potions: s.potions + (loot.potion ?? 0),
+        evolutionStones: s.evolutionStones + (loot.stone ?? 0),
+        pokeballs: loot.pokeball
+          ? { ...s.pokeballs, [loot.pokeball]: (s.pokeballs[loot.pokeball] ?? 0) + (loot.qty ?? 1) }
+          : s.pokeballs,
+      };
+    });
+
   const resetGame = () => {
     clearSave();
     setState(defaultState());
@@ -396,6 +433,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setRegion,
     unlockRegion,
     adjustPvpRanking,
+    setFieldPos,
+    openTreasure,
     resetGame,
     playerExpToNext,
   };

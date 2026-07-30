@@ -1,13 +1,60 @@
 import { useState } from 'react';
 import { useGame } from '../contexts/GameContext';
+import { audio } from '../lib/audio';
 
 export default function Settings() {
   const { state, resetGame } = useGame();
   const [confirming, setConfirming] = useState(false);
+  const [muted, setMuted] = useState(audio.muted);
+  const [volume, setVolume] = useState(audio.volume);
 
   return (
-    <div className="p-4 max-w-lg mx-auto space-y-4">
+    <div className="p-4 max-w-lg mx-auto space-y-4 page-enter">
       <h1 className="text-lg font-heading text-gold-400">설정</h1>
+
+      <div className="panel p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <label htmlFor="mute" className="text-sm">
+            소리
+          </label>
+          <button
+            id="mute"
+            role="switch"
+            aria-checked={!muted}
+            onClick={() => {
+              const next = !muted;
+              setMuted(next);
+              audio.setMuted(next);
+              if (!next) audio.click();
+            }}
+            className={`px-3 py-1.5 rounded-md text-xs btn-press ${
+              muted ? 'panel text-slate-400' : 'bg-emerald-600 text-white'
+            }`}
+          >
+            {muted ? '꺼짐' : '켜짐'}
+          </button>
+        </div>
+        <div>
+          <label htmlFor="volume" className="text-xs text-slate-400 flex justify-between">
+            <span>음량</span>
+            <span>{Math.round(volume * 100)}%</span>
+          </label>
+          <input
+            id="volume"
+            type="range"
+            min={0}
+            max={100}
+            value={Math.round(volume * 100)}
+            disabled={muted}
+            onChange={(e) => {
+              const v = Number(e.target.value) / 100;
+              setVolume(v);
+              audio.setVolume(v);
+            }}
+            className="w-full mt-1 accent-gold-400 disabled:opacity-40"
+          />
+        </div>
+      </div>
 
       <div className="panel p-4 space-y-2 text-sm">
         <div className="flex justify-between">

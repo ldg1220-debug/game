@@ -76,62 +76,171 @@ h3,
 }
 
 /*
- * 전투 모션.
- * 스프라이트가 반전(-scale-x-100)될 수 있어서, 모든 키프레임은 상대 쪽 변형까지
- * 포함한 짝을 따로 둔다. transform을 한 속성에서 합성해야 반전이 풀리지 않는다.
+ * 펫 모션 (완성도 가이드 3.1~3.2절).
+ *
+ * 래스터 스프라이트 시트 대신 SVG 전체에 CSS 변형을 건다. 42종 전부에 추가
+ * 에셋 없이 같은 모션이 적용된다. 프레임 수와 지속시간은 가이드 스펙을 따랐다.
+ *
+ * 반전(pet-flip)이 걸린 스프라이트는 transform이 덮어써지면 반전이 풀리므로,
+ * 반전 상태의 키프레임을 짝으로 둔다. CSS 변수로 반전 계수를 넘겨 키프레임
+ * 하나로 양쪽을 처리한다.
  */
-
-/* 대기 중 호흡 */
-.animate-idle {
-  animation: idle-bob 2.6s ease-in-out infinite;
+.pet-flip {
+  --flip: -1;
 }
-@keyframes idle-bob {
-  0%,
-  100% {
-    transform: translateY(0) scale(1);
-  }
-  50% {
-    transform: translateY(-3px) scale(1.02);
-  }
-}
-.-scale-x-100.animate-idle {
-  animation: idle-bob-flipped 2.6s ease-in-out infinite;
-}
-@keyframes idle-bob-flipped {
-  0%,
-  100% {
-    transform: scaleX(-1) translateY(0);
-  }
-  50% {
-    transform: scaleX(-1) translateY(-3px);
-  }
+svg[class*='pet-'] {
+  --flip: 1;
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
-/* 공격 시 앞으로 돌진 */
-.animate-lunge {
-  animation: lunge 0.42s ease-out;
+/* Idle: 4프레임 × 200ms = 800ms, 무한 루프. 부드러운 호흡 */
+.pet-idle {
+  animation: pet-idle 0.8s steps(1, end) infinite;
 }
-@keyframes lunge {
-  0%,
+@keyframes pet-idle {
+  0% {
+    transform: scaleX(var(--flip)) translateY(0);
+  }
+  25% {
+    transform: scaleX(var(--flip)) translateY(-5px);
+  }
+  50% {
+    transform: scaleX(var(--flip)) translateY(0);
+  }
+  75% {
+    transform: scaleX(var(--flip)) translateY(5px);
+  }
   100% {
-    transform: translate(0, 0);
-  }
-  35% {
-    transform: translate(14px, -6px) scale(1.06);
+    transform: scaleX(var(--flip)) translateY(0);
   }
 }
-.-scale-x-100.animate-lunge {
-  animation: lunge-flipped 0.42s ease-out;
+
+/* Walk: 6프레임 × 150ms = 900ms, 무한 루프. 좌우로 기울며 걷기 */
+.pet-walk {
+  animation: pet-walk 0.9s steps(1, end) infinite;
 }
-@keyframes lunge-flipped {
-  0%,
+@keyframes pet-walk {
+  0% {
+    transform: scaleX(var(--flip)) translateY(0) rotate(0deg);
+  }
+  16.6% {
+    transform: scaleX(var(--flip)) translateY(-3px) rotate(-4deg);
+  }
+  33.3% {
+    transform: scaleX(var(--flip)) translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: scaleX(var(--flip)) translateY(0) rotate(0deg);
+  }
+  66.6% {
+    transform: scaleX(var(--flip)) translateY(-3px) rotate(4deg);
+  }
+  83.3% {
+    transform: scaleX(var(--flip)) translateY(0) rotate(2deg);
+  }
   100% {
-    transform: scaleX(-1) translate(0, 0);
-  }
-  35% {
-    transform: scaleX(-1) translate(14px, -6px) scale(1.06);
+    transform: scaleX(var(--flip)) translateY(0) rotate(0deg);
   }
 }
+
+/* Attack: 8프레임 × 100ms = 800ms, 1회. 준비(뒤로) → 돌진 → 복귀, 임팩트는 5프레임 */
+.pet-attack {
+  animation: pet-attack 0.8s ease-out 1;
+}
+@keyframes pet-attack {
+  0% {
+    transform: scaleX(var(--flip)) translateX(0);
+  }
+  25% {
+    transform: scaleX(var(--flip)) translateX(-8px) scale(0.96);
+  }
+  50% {
+    transform: scaleX(var(--flip)) translateX(18px) scale(1.08);
+  }
+  62.5% {
+    transform: scaleX(var(--flip)) translateX(14px) scale(1.04);
+  }
+  100% {
+    transform: scaleX(var(--flip)) translateX(0) scale(1);
+  }
+}
+
+/* Hurt: 3프레임 × 100ms = 300ms, 1회. 밀려남 → 흔들림 → 복귀 */
+.pet-hurt {
+  animation: pet-hurt 0.3s ease-out 1;
+}
+@keyframes pet-hurt {
+  0% {
+    transform: scaleX(var(--flip)) translateX(0);
+    filter: none;
+  }
+  33% {
+    transform: scaleX(var(--flip)) translateX(-10px);
+    filter: brightness(2.2) saturate(0.4);
+  }
+  66% {
+    transform: scaleX(var(--flip)) translateX(6px);
+    filter: brightness(1.4);
+  }
+  100% {
+    transform: scaleX(var(--flip)) translateX(0);
+    filter: none;
+  }
+}
+
+/* Faint: 4프레임 × 200ms = 800ms, 1회. 무릎 → 쓰러짐 → 정지 */
+.pet-faint {
+  animation: pet-faint 0.8s ease-in forwards;
+}
+@keyframes pet-faint {
+  0% {
+    transform: scaleX(var(--flip)) rotate(0deg) translateY(0);
+    opacity: 1;
+  }
+  25% {
+    transform: scaleX(var(--flip)) rotate(0deg) translateY(6px) scaleY(0.9);
+  }
+  50% {
+    transform: scaleX(var(--flip)) rotate(-40deg) translateY(10px);
+  }
+  100% {
+    transform: scaleX(var(--flip)) rotate(-85deg) translateY(14px);
+    opacity: 0.35;
+  }
+}
+
+/* Victory: 6프레임 × 200ms = 1200ms, 1회. 점프 → 체공 → 착지 */
+.pet-victory {
+  animation: pet-victory 1.2s ease-out 1;
+}
+@keyframes pet-victory {
+  0% {
+    transform: scaleX(var(--flip)) translateY(0);
+  }
+  16.6% {
+    transform: scaleX(var(--flip)) translateY(-6px) scaleY(1.06);
+  }
+  33.3% {
+    transform: scaleX(var(--flip)) translateY(-20px) rotate(-8deg);
+  }
+  50% {
+    transform: scaleX(var(--flip)) translateY(-22px) rotate(8deg);
+  }
+  66.6% {
+    transform: scaleX(var(--flip)) translateY(-8px) rotate(0deg);
+  }
+  83.3% {
+    transform: scaleX(var(--flip)) translateY(0) scaleY(0.92);
+  }
+  100% {
+    transform: scaleX(var(--flip)) translateY(0) scaleY(1);
+  }
+}
+
+/*
+ * 전투 화면 효과.
+ */
 
 /* 전투 진입 시 등장 */
 .animate-enter-left {
@@ -156,6 +265,51 @@ h3,
   }
 }
 
+/* 속성 입자 (가이드 5.1) */
+.particle-fly {
+  animation: particle-fly 0.55s ease-out forwards;
+}
+@keyframes particle-fly {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(0.3);
+    opacity: 0;
+  }
+}
+.particle-burst {
+  animation: particle-burst 0.4s ease-out forwards;
+}
+@keyframes particle-burst {
+  0% {
+    transform: scale(0.2);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+/* 크리티컬 시 전투 화면 흔들림 (가이드 4.3: 5px, 100ms) */
+.battle-shake {
+  animation: battle-shake 0.1s ease-in-out 2;
+}
+@keyframes battle-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
 /* 상성 히트 시 화면 섬광 */
 .animate-flash {
   animation: flash 0.45s ease-out;
@@ -169,59 +323,66 @@ h3,
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .animate-idle,
-  .animate-lunge,
-  .animate-hit,
-  .animate-enter-left,
-  .animate-enter-right,
-  .animate-flash {
-    animation: none;
+/*
+ * UI 전환 및 상호작용 (가이드 7.1).
+ */
+
+/* 페이지 진입: 페이드 + 슬라이드 */
+.page-enter {
+  animation: page-enter 0.24s ease-out;
+}
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
 }
 
-/* 피격 시 흔들림 */
-.animate-hit {
-  animation: hit-shake 0.32s ease-out;
+/* 버튼: 호버 1.05x, 클릭 0.95x */
+.btn-press {
+  transition:
+    transform 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
-@keyframes hit-shake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  20% {
-    transform: translateX(-6px);
-  }
-  40% {
-    transform: translateX(5px);
-  }
-  60% {
-    transform: translateX(-3px);
-  }
-  80% {
-    transform: translateX(2px);
-  }
+.btn-press:hover:not(:disabled) {
+  transform: scale(1.04);
 }
-/* 반전된 스프라이트는 흔들림에도 반전을 유지해야 한다 */
-.-scale-x-100.animate-hit {
-  animation: hit-shake-flipped 0.32s ease-out;
+.btn-press:active:not(:disabled) {
+  transform: scale(0.95);
 }
-@keyframes hit-shake-flipped {
-  0%,
-  100% {
-    transform: scaleX(-1) translateX(0);
+.btn-press:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 키보드 포커스 링 (가이드 7.3) */
+:where(button, a, input, select, [tabindex]):focus-visible {
+  outline: 2px solid #e6c866;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter,
+  .btn-press,
+  .pet-idle,
+  .pet-walk,
+  .pet-attack,
+  .pet-hurt,
+  .pet-faint,
+  .pet-victory,
+  .animate-enter-left,
+  .animate-enter-right,
+  .animate-flash,
+  .battle-shake,
+  .particle-fly,
+  .particle-burst {
+    animation: none;
   }
-  20% {
-    transform: scaleX(-1) translateX(-6px);
-  }
-  40% {
-    transform: scaleX(-1) translateX(5px);
-  }
-  60% {
-    transform: scaleX(-1) translateX(-3px);
-  }
-  80% {
-    transform: scaleX(-1) translateX(2px);
+  .btn-press:hover:not(:disabled),
+  .btn-press:active:not(:disabled) {
+    transform: none;
   }
 }
 

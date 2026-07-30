@@ -21,11 +21,16 @@ import {
   dominantElement,
   ELEMENT_LABEL,
   formatElementPoints,
+  type Element,
   type PetInstance,
   type PokeballType,
 } from '../lib/gameTypes';
 import { elementAffinity, skillAffinity } from '../lib/typeChart';
 import { getShape } from '../lib/petData';
+import { getSkill } from '../lib/skillData';
+import { audio } from '../lib/audio';
+import type { AiLevel } from '../lib/battleEngine';
+import type { BattlePhase } from '../components/BattleArena';
 
 type Mode = 'battle' | 'switching' | 'capturing' | 'result';
 
@@ -48,6 +53,11 @@ export default function BattleScreen() {
   const [mode, setMode] = useState<Mode>('battle');
   const [resultText, setResultText] = useState('');
   const [captured, setCaptured] = useState<PetInstance | null>(null);
+  // 연출이 재생되는 동안 입력을 막는다
+  const [busy, setBusy] = useState(false);
+  const [lastSkill, setLastSkill] = useState<Element>('none');
+  // 가이드 4.5: 공격 연출 → 임팩트(데미지 표시) → 대기
+  const [phase, setPhase] = useState<BattlePhase>('idle');
   const settled = useRef(false);
   const logRef = useRef<HTMLDivElement>(null);
 
@@ -73,6 +83,33 @@ export default function BattleScreen() {
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' });
   }, [battle?.log.length]);
+
+  // 전투 BGM. 보스는 별도 트랙.
+  useEffect(() => {
+    if (!encounter) return;
+    audio.playBGM(encounter.source === 'boss' ? 'boss' : 'battle');
+    return () => audio.stopBGM();
+  }, [encounter]);
+
+  /** 지역 진행도와 보스 여부로 AI 난이도를 정한다 (가이드 4.4) */
+  const aiLevel: AiLevel =
+    encounter?.source === 'boss' || encounter?.source === 'pvp'
+      ? 'hard'
+      : state.unlockedRegionIds.length > 1
+        ? 'normal'
+        : state.player.level < 5
+          ? 'easy'
+          : 'normal';
+
+  /** 이번 턴 효과에 맞춰 효과음을 낸다 */
+  const playTurnSounds = (next: BattleState, playerSkillId?: string) => {
+    const fx = next.effects;
+    if (fx.some((e) => e.kind === 'crit')) audio.critical();
+    else if (fx.some((e) => e.effectiveness === 'super')) audio.superEffective();
+    if (fx.some((e) => e.kind === 'status')) audio.status();
+    if (playerSkillId) audio.attack(getSkill(playerSkillId).element);
+    else if (fx.some((e) => e.kind === 'hit')) audio.hurt();
+  };
 
   if (!encounter || !battle) {
     return <div className="p-4 text-center text-slate-400">전투를 준비하는 중...</div>;
@@ -124,9 +161,31 @@ export default function BattleScreen() {
   };
 
   const runTurn = (action: BattleAction) => {
-    const next = executeTurn(battle, action, chooseEnemyAction(battle));
+    if (busy) return;
+    const next = executeTurn(battle, action, chooseEnemyAction(battle, aiLevel));
     setBattle(next);
-    if (next.status !== 'ongoing') settle(next);
+    playTurnSounds(next, action.type === 'attack' ? action.skillId : undefined);
+    setLastSkill(action.type === 'attack' ? getSkill(action.skillId).element : 'none');
+
+    // 공격 모션(380ms) → 임팩트·데미지(520ms) 순으로 재생한다
+    setBusy(true);
+    setPhase('attack');
+    window.setTimeout(() => setPhase('impact'), 380);
+
+    if (next.status !== 'ongoing') {
+      window.setTimeout(() => setPhase('idle'), 900);
+      window.setTimeout(() => setBusy(false), 900);
+    } else {
+      window.setTimeout(() => setPhase('idle'), 900);
+      window.setTimeout(() => setBusy(false), 900);
+    }
+
+    if (next.status !== 'ongoing') {
+      // 승패 연출(victory/faint)을 보고 나서 결과 화면으로 넘어간다
+      if (next.status === 'won') audio.victory();
+      else if (next.status === 'lost') audio.defeat();
+      window.setTimeout(() => settle(next), 1400);
+    }
   };
 
   const handleCapture = (ballType: PokeballType) => {
@@ -148,6 +207,7 @@ export default function BattleScreen() {
 
     if (success) {
       settled.current = true;
+      audio.capture();
       persist(battle);
       const caught: PetInstance = { ...wild, currentHp: enemy.hp };
       addCapturedPet(caught);
@@ -158,9 +218,10 @@ export default function BattleScreen() {
     }
 
     setMode('battle');
-    const next = executeTurn(battle, { type: 'wait' }, chooseEnemyAction(battle));
+    const next = executeTurn(battle, { type: 'wait' }, chooseEnemyAction(battle, aiLevel));
     next.log.push(`포획 실패... (성공률 ${Math.round(rate * 100)}%)`);
     setBattle(next);
+    playTurnSounds(next);
     if (next.status !== 'ongoing') settle(next);
   };
 
@@ -211,6 +272,9 @@ export default function BattleScreen() {
         effects={battle.effects}
         turn={battle.turn}
         regionId={encounter.source === 'pvp' ? 'plains' : state.currentRegionId}
+        playerSkillElement={lastSkill}
+        outcome={battle.status === 'won' ? 'won' : battle.status === 'lost' ? 'lost' : null}
+        phase={phase}
       />
 
       <div ref={logRef} className="panel p-2 h-24 overflow-y-auto text-xs space-y-1 text-slate-300">
@@ -238,7 +302,8 @@ export default function BattleScreen() {
                 <button
                   key={skill.id}
                   onClick={() => runTurn({ type: 'attack', skillId: skill.id })}
-                  className="panel py-2 px-2 text-xs hover:border-gold-400/60 text-left"
+                  disabled={busy}
+                  className="panel py-2 px-2 text-xs hover:border-gold-400/60 text-left btn-press"
                   title={skill.description}
                 >
                   <span className="flex items-center justify-between gap-1">
@@ -260,19 +325,19 @@ export default function BattleScreen() {
           </div>
 
           <div className="grid grid-cols-4 gap-2">
-            <button onClick={() => runTurn({ type: 'defend' })} className="panel py-2 text-xs hover:border-gold-400/60">
+            <button onClick={() => runTurn({ type: 'defend' })} disabled={busy} className="panel py-2 text-xs hover:border-gold-400/60 btn-press">
               방어
             </button>
             <button
               onClick={() => setMode('switching')}
-              disabled={!benchAvailable}
+              disabled={!benchAvailable || busy}
               className="panel py-2 text-xs hover:border-gold-400/60 disabled:opacity-30"
             >
               교체
             </button>
             <button
               onClick={() => runTurn({ type: 'tamer' })}
-              disabled={battle.tamerCooldown > 0 || battle.tamer.hp <= 0}
+              disabled={battle.tamerCooldown > 0 || battle.tamer.hp <= 0 || busy}
               className="panel py-2 text-xs hover:border-gold-400/60 disabled:opacity-30"
               title="테이머가 직접 공격합니다"
             >
@@ -282,11 +347,11 @@ export default function BattleScreen() {
               )}
             </button>
             {encounter.canCapture ? (
-              <button onClick={() => setMode('capturing')} className="panel py-2 text-xs hover:border-gold-400/60">
+              <button onClick={() => setMode('capturing')} disabled={busy} className="panel py-2 text-xs hover:border-gold-400/60 btn-press">
                 포획
               </button>
             ) : (
-              <button onClick={() => runTurn({ type: 'flee' })} className="panel py-2 text-xs hover:border-gold-400/60">
+              <button onClick={() => runTurn({ type: 'flee' })} disabled={busy} className="panel py-2 text-xs hover:border-gold-400/60 btn-press">
                 도망
               </button>
             )}
@@ -295,7 +360,8 @@ export default function BattleScreen() {
           {encounter.canCapture && (
             <button
               onClick={() => runTurn({ type: 'flee' })}
-              className="w-full panel py-2 text-xs hover:border-gold-400/60 text-slate-400"
+              disabled={busy}
+              className="w-full panel py-2 text-xs hover:border-gold-400/60 text-slate-400 btn-press"
             >
               도망치기
             </button>

@@ -5,6 +5,7 @@ import {
   type ElementPoints,
   type PetAbility,
   type PetInstance,
+  type Element,
   type Skill,
   type StatusEffect,
 } from './gameTypes';
@@ -61,6 +62,10 @@ export interface BattleEffect {
   kind: 'hit' | 'crit' | 'miss' | 'status' | 'heal';
   amount?: number;
   label?: string;
+  /** 상성 결과. SUPER EFFECTIVE / RESISTED 표시와 사운드에 쓴다. */
+  effectiveness?: 'super' | 'neutral' | 'weak';
+  /** 사용된 스킬 속성. 입자 이펙트와 효과음 선택에 쓴다. */
+  element?: Element;
 }
 
 const TAMER_COOLDOWN_TURNS = 3;
@@ -163,24 +168,53 @@ function activeOf(state: BattleState, side: Side): Combatant {
     : state.enemyTeam[state.enemyActiveIndex];
 }
 
-export function chooseEnemyAction(state: BattleState): BattleAction {
+/** AI 난이도 (가이드 4.4). 지역 난이도와 보스 여부로 결정한다. */
+export type AiLevel = 'easy' | 'normal' | 'hard';
+
+/**
+ * 적 AI. 가이드 4.4의 세 단계를 구현한다.
+ * - easy : 항상 위력이 낮은 기술
+ * - normal: 체력이 절반 이하면 방어, 아니면 상성이 좋은 기술 (가끔 무작위)
+ * - hard  : 항상 기대 데미지가 최대인 기술, 상태이상 기회도 노린다
+ */
+export function chooseEnemyAction(state: BattleState, level: AiLevel = 'normal'): BattleAction {
   const enemy = activeOf(state, 'enemy');
   const skills = getCombatantSkills(enemy);
-  const player = activeOf(state, 'player');
+  const target = playerFront(state);
 
-  // 상성이 좋은 기술을 우선 고르되 가끔 무작위로 섞는다
-  if (Math.random() < 0.75) {
-    const best = skills.reduce((a, b) => {
-      const scoreOf = (s: Skill) =>
-        s.power *
-        (s.element === 'none'
-          ? elementAffinity(enemy.elementPoints, player.elementPoints)
-          : skillAffinity(s.element, player.elementPoints));
-      return scoreOf(b) > scoreOf(a) ? b : a;
-    });
-    return { type: 'attack', skillId: best.id };
+  const affinity = (s: Skill) =>
+    s.element === 'none'
+      ? elementAffinity(enemy.elementPoints, target.elementPoints)
+      : skillAffinity(s.element, target.elementPoints);
+
+  // 방어/특방 중 낮은 쪽을 노리는지까지 반영한 기대 데미지
+  const expected = (s: Skill) => {
+    const atk = s.category === 'physical' ? enemy.ability.ATK : enemy.ability.SPA;
+    const def = s.category === 'physical' ? target.ability.DEF : target.ability.SPD;
+    return (s.power * atk) / Math.max(1, def) * affinity(s) * (s.accuracy / 100);
+  };
+
+  if (level === 'easy') {
+    const weakest = skills.reduce((a, b) => (b.power < a.power ? b : a));
+    return { type: 'attack', skillId: weakest.id };
   }
-  return { type: 'attack', skillId: skills[Math.floor(Math.random() * skills.length)].id };
+
+  if (level === 'normal') {
+    if (enemy.hp <= enemy.maxHp / 2 && Math.random() < 0.25) return { type: 'defend' };
+    if (Math.random() < 0.75) {
+      const best = skills.reduce((a, b) => (expected(b) > expected(a) ? b : a));
+      return { type: 'attack', skillId: best.id };
+    }
+    return { type: 'attack', skillId: skills[Math.floor(Math.random() * skills.length)].id };
+  }
+
+  // hard: 상대가 멀쩡하면 상태이상을 먼저 노리고, 그 외에는 최대 기대 데미지
+  const statusMove = skills.find((s) => s.inflicts && s.inflicts.chance >= 0.3);
+  if (statusMove && !target.status && target.hp > target.maxHp * 0.6 && Math.random() < 0.45) {
+    return { type: 'attack', skillId: statusMove.id };
+  }
+  const best = skills.reduce((a, b) => (expected(b) > expected(a) ? b : a));
+  return { type: 'attack', skillId: best.id };
 }
 
 /** 행동 직전 상태이상 판정. 행동 불가면 false. */
@@ -259,7 +293,13 @@ function performAttack(
   if (multiplier >= 1.5) message += ' 효과가 굉장했다!';
   else if (multiplier <= 0.75) message += ' 효과가 별로였다...';
   state.log.push(message);
-  state.effects.push({ side: defenderSide, kind: isCrit ? 'crit' : 'hit', amount: final });
+  state.effects.push({
+    side: defenderSide,
+    kind: isCrit ? 'crit' : 'hit',
+    amount: final,
+    effectiveness: multiplier >= 1.5 ? 'super' : multiplier <= 0.75 ? 'weak' : 'neutral',
+    element: skill.element,
+  });
 
   if (skill.inflicts && Math.random() < skill.inflicts.chance) {
     applyStatus(state, defender, skill.inflicts.effect, defenderSide);
