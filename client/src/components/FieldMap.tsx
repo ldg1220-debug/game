@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  generateMap,
-  isWalkable,
-  TILES,
-  TILE_SIZE,
-  type MapObject,
-  type TileKind,
-} from '../lib/mapData';
+import { generateMap, isWalkable, TILES, TILE_SIZE, type MapObject } from '../lib/mapData';
+import { decorSprite, getProp, groundPattern, hash2, shiftColor, themeFor } from '../lib/mapRender';
 import { audio } from '../lib/audio';
 
 /** 타일당 이동 시간 (가이드 1.3절) */
@@ -196,116 +190,238 @@ export function FieldMap({
       }
     };
 
-    const drawTile = (kind: TileKind, px: number, py: number, tx: number, ty: number) => {
-      const info = TILES[kind];
-      ctx.fillStyle = info.color;
-      ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-      if (!info.detail) return;
-      ctx.fillStyle = info.detail;
+    const theme = regionId;
+    const groundImg = groundPattern(theme, 'ground');
+    const pathImg = groundPattern(theme, 'path');
+    const groundPat = ctx.createPattern(groundImg, 'repeat')!;
+    const pathPat = ctx.createPattern(pathImg, 'repeat')!;
 
-      // 타일 종류별 간단한 디테일. 좌표 기반이라 매 프레임 같은 모양이 나온다.
-      const odd = (tx + ty) % 2 === 0;
-      switch (kind) {
-        case 'grass':
-        case 'path':
-        case 'sand':
-          if (odd) ctx.fillRect(px + 6, py + 8, 3, 3);
-          ctx.fillRect(px + 20, py + 21, 3, 3);
-          break;
-        case 'tall-grass':
-          for (let i = 0; i < 4; i++) {
-            const gx = px + 4 + i * 7;
-            ctx.fillRect(gx, py + 16 + ((i + tx) % 3) * 2, 2, 12);
-          }
-          break;
-        case 'tree':
+    /** 길 타일은 바닥 위에 부드러운 경계로 얹는다 (오토타일 대용) */
+    const drawGroundLayer = (camX: number, camY: number, x0: number, y0: number, x1: number, y1: number) => {
+      ctx.save();
+      ctx.translate(-camX, -camY);
+      ctx.fillStyle = groundPat;
+      ctx.fillRect(x0 * TILE_SIZE, y0 * TILE_SIZE, (x1 - x0 + 1) * TILE_SIZE, (y1 - y0 + 1) * TILE_SIZE);
+
+      // 길: 이웃이 길인지에 따라 모서리를 둥글려 이어붙인다
+      ctx.fillStyle = pathPat;
+      for (let y = y0; y <= y1; y++) {
+        for (let x = x0; x <= x1; x++) {
+          if (tiles[y][x] !== 'path' && tiles[y][x] !== 'sand') continue;
+          const px = x * TILE_SIZE;
+          const py = y * TILE_SIZE;
+          const same = (ox: number, oy: number) => {
+            const t = tiles[y + oy]?.[x + ox];
+            return t === 'path' || t === 'sand';
+          };
+          const r = 11;
           ctx.beginPath();
-          ctx.arc(px + 16, py + 13, 12, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#4a3626';
-          ctx.fillRect(px + 13, py + 20, 6, 11);
-          break;
-        case 'rock':
-          ctx.beginPath();
-          ctx.moveTo(px + 5, py + 27);
-          ctx.lineTo(px + 12, py + 7);
-          ctx.lineTo(px + 22, py + 9);
-          ctx.lineTo(px + 28, py + 27);
+          ctx.moveTo(px + (same(-1, 0) || same(0, -1) ? 0 : r), py);
+          ctx.lineTo(px + TILE_SIZE - (same(1, 0) || same(0, -1) ? 0 : r), py);
+          ctx.quadraticCurveTo(px + TILE_SIZE, py, px + TILE_SIZE, py + (same(1, 0) || same(0, -1) ? 0 : r));
+          ctx.lineTo(px + TILE_SIZE, py + TILE_SIZE - (same(1, 0) || same(0, 1) ? 0 : r));
+          ctx.quadraticCurveTo(px + TILE_SIZE, py + TILE_SIZE, px + TILE_SIZE - (same(1, 0) || same(0, 1) ? 0 : r), py + TILE_SIZE);
+          ctx.lineTo(px + (same(-1, 0) || same(0, 1) ? 0 : r), py + TILE_SIZE);
+          ctx.quadraticCurveTo(px, py + TILE_SIZE, px, py + TILE_SIZE - (same(-1, 0) || same(0, 1) ? 0 : r));
+          ctx.lineTo(px, py + (same(-1, 0) || same(0, -1) ? 0 : r));
+          ctx.quadraticCurveTo(px, py, px + (same(-1, 0) || same(0, -1) ? 0 : r), py);
           ctx.closePath();
           ctx.fill();
-          break;
-        case 'water':
-          ctx.globalAlpha = 0.55;
-          ctx.fillRect(px + 3, py + 10 + (odd ? 3 : 0), 12, 2);
-          ctx.fillRect(px + 17, py + 20 - (odd ? 3 : 0), 11, 2);
-          ctx.globalAlpha = 1;
-          break;
-        case 'ice':
-          ctx.globalAlpha = 0.4;
-          ctx.beginPath();
-          ctx.moveTo(px + 8, py + 8);
-          ctx.lineTo(px + 24, py + 24);
-          ctx.moveTo(px + 24, py + 8);
-          ctx.lineTo(px + 8, py + 24);
-          ctx.strokeStyle = info.detail;
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-          ctx.globalAlpha = 1;
-          break;
-        case 'lava':
-          ctx.globalAlpha = 0.8;
-          ctx.beginPath();
-          ctx.arc(px + 16, py + 16, 8, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.globalAlpha = 1;
-          break;
+        }
       }
+      ctx.restore();
     };
 
+    /**
+     * 맵 오브젝트. 가이드 1.3의 스케일(마을 건물 96~128px, 던전 입구 64px)에 맞춰
+     * 타일 하나보다 크게 그리고, 바닥 그림자로 접지시킨다.
+     */
     const drawObject = (o: MapObject, px: number, py: number) => {
+      const t = themeFor(theme);
+      const cx = px + TILE_SIZE / 2;
+      const baseY = py + TILE_SIZE;
+
+      const shadow = (rx: number, ry: number) => {
+        const g = ctx.createRadialGradient(cx, baseY - 2, 0, cx, baseY - 2, rx);
+        g.addColorStop(0, 'rgba(0,0,0,0.38)');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.ellipse(cx, baseY - 2, rx, ry, 0, 0, Math.PI * 2);
+        ctx.fill();
+      };
+
       if (o.kind === 'treasure') {
         const opened = openedRef.current.has(o.id);
-        ctx.fillStyle = opened ? '#5a4a34' : '#b5892f';
-        ctx.fillRect(px + 6, py + 12, 20, 15);
-        ctx.fillStyle = opened ? '#3d3222' : '#e0b64a';
-        ctx.fillRect(px + 6, py + 8, 20, 6);
-        if (!opened) {
-          ctx.fillStyle = '#f0dc9a';
-          ctx.fillRect(px + 14, py + 15, 4, 5);
+        shadow(15, 6);
+        const body = ctx.createLinearGradient(cx - 13, 0, cx + 13, 0);
+        body.addColorStop(0, opened ? '#4a3c28' : '#a8762a');
+        body.addColorStop(0.4, opened ? '#5f4d33' : '#e0a83c');
+        body.addColorStop(1, opened ? '#3a2f1e' : '#8a5f1e');
+        ctx.fillStyle = body;
+        ctx.beginPath();
+        ctx.roundRect(cx - 13, baseY - 20, 26, 18, 3);
+        ctx.fill();
+        // 뚜껑
+        ctx.fillStyle = opened ? '#33291a' : '#c08a28';
+        ctx.beginPath();
+        if (opened) {
+          ctx.roundRect(cx - 14, baseY - 32, 28, 10, 4);
+        } else {
+          ctx.roundRect(cx - 14, baseY - 26, 28, 9, 4);
         }
-      } else if (o.kind === 'npc') {
-        ctx.fillStyle = '#5b7fb5';
-        ctx.fillRect(px + 10, py + 15, 12, 14);
-        ctx.fillStyle = '#e0b48c';
-        ctx.beginPath();
-        ctx.arc(px + 16, py + 11, 6, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = '#4a3a2c';
-        ctx.fillRect(px + 10, py + 5, 12, 4);
-      } else if (o.kind === 'dungeon') {
-        ctx.fillStyle = '#241d33';
-        ctx.beginPath();
-        ctx.moveTo(px + 4, py + 30);
-        ctx.lineTo(px + 4, py + 16);
-        ctx.arc(px + 16, py + 16, 12, Math.PI, 0);
-        ctx.lineTo(px + 28, py + 30);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = '#6b6b78';
-        ctx.fillRect(px + 2, py + 28, 28, 3);
-      } else if (o.kind === 'town') {
-        ctx.fillStyle = '#8a6a44';
-        ctx.fillRect(px + 5, py + 15, 22, 15);
-        ctx.fillStyle = '#c0553f';
-        ctx.beginPath();
-        ctx.moveTo(px + 2, py + 15);
-        ctx.lineTo(px + 16, py + 4);
-        ctx.lineTo(px + 30, py + 15);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = '#f0dc9a';
-        ctx.fillRect(px + 13, py + 21, 6, 9);
+        // 금속 띠와 자물쇠
+        ctx.fillStyle = opened ? '#6b6152' : '#f4de9a';
+        ctx.fillRect(cx - 2.5, baseY - 26, 5, 24);
+        if (!opened) {
+          ctx.beginPath();
+          ctx.arc(cx, baseY - 15, 3.4, 0, Math.PI * 2);
+          ctx.fill();
+          // 반짝임
+          ctx.fillStyle = 'rgba(255,255,255,0.55)';
+          ctx.beginPath();
+          ctx.ellipse(cx - 6, baseY - 22, 4, 2, -0.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        return;
       }
+
+      if (o.kind === 'npc') {
+        shadow(11, 4.5);
+        ctx.fillStyle = '#3f5f8a';
+        ctx.beginPath();
+        ctx.roundRect(cx - 7, baseY - 22, 14, 20, 4);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.16)';
+        ctx.beginPath();
+        ctx.roundRect(cx - 7, baseY - 22, 6, 20, 4);
+        ctx.fill();
+        const face = ctx.createRadialGradient(cx - 2, baseY - 30, 1, cx, baseY - 28, 8);
+        face.addColorStop(0, '#f0c9a4');
+        face.addColorStop(1, '#cf9f78');
+        ctx.fillStyle = face;
+        ctx.beginPath();
+        ctx.arc(cx, baseY - 28, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#4a3524';
+        ctx.beginPath();
+        ctx.arc(cx, baseY - 30, 7, Math.PI, 0);
+        ctx.fill();
+        ctx.fillStyle = '#1a1526';
+        ctx.fillRect(cx - 3.4, baseY - 29, 1.8, 1.8);
+        ctx.fillRect(cx + 1.6, baseY - 29, 1.8, 1.8);
+        // 대화 표시
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.beginPath();
+        ctx.roundRect(cx + 6, baseY - 44, 14, 10, 3);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(cx + 10, baseY - 34);
+        ctx.lineTo(cx + 13, baseY - 30);
+        ctx.lineTo(cx + 14, baseY - 34);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#3a3550';
+        for (let i = 0; i < 3; i++) ctx.fillRect(cx + 8.5 + i * 3.4, baseY - 40, 2, 2);
+        return;
+      }
+
+      if (o.kind === 'dungeon') {
+        // 64px급 바위 아치
+        shadow(26, 9);
+        const rockG = ctx.createLinearGradient(cx - 26, baseY - 52, cx + 26, baseY);
+        rockG.addColorStop(0, t.rock[1]);
+        rockG.addColorStop(0.5, t.rock[0]);
+        rockG.addColorStop(1, shiftColor(t.rock[0], -0.4));
+        ctx.fillStyle = rockG;
+        ctx.beginPath();
+        ctx.moveTo(cx - 26, baseY);
+        ctx.lineTo(cx - 22, baseY - 30);
+        ctx.quadraticCurveTo(cx, baseY - 58, cx + 22, baseY - 30);
+        ctx.lineTo(cx + 26, baseY);
+        ctx.closePath();
+        ctx.fill();
+        // 입구 (안쪽으로 어두워짐)
+        const hole = ctx.createRadialGradient(cx, baseY - 8, 2, cx, baseY - 10, 22);
+        hole.addColorStop(0, '#000');
+        hole.addColorStop(1, '#1a1024');
+        ctx.fillStyle = hole;
+        ctx.beginPath();
+        ctx.moveTo(cx - 14, baseY);
+        ctx.lineTo(cx - 13, baseY - 18);
+        ctx.quadraticCurveTo(cx, baseY - 38, cx + 13, baseY - 18);
+        ctx.lineTo(cx + 14, baseY);
+        ctx.closePath();
+        ctx.fill();
+        // 횃불
+        ctx.fillStyle = '#ffb347';
+        ctx.beginPath();
+        ctx.ellipse(cx - 20, baseY - 26, 3, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,210,120,0.35)';
+        ctx.beginPath();
+        ctx.arc(cx - 20, baseY - 26, 10, 0, Math.PI * 2);
+        ctx.fill();
+        return;
+      }
+
+      // 마을: 96px급 건물
+      shadow(34, 11);
+      // 뒷집
+      ctx.fillStyle = '#6f563a';
+      ctx.beginPath();
+      ctx.roundRect(cx + 8, baseY - 40, 26, 26, 2);
+      ctx.fill();
+      ctx.fillStyle = '#8a4436';
+      ctx.beginPath();
+      ctx.moveTo(cx + 4, baseY - 38);
+      ctx.lineTo(cx + 21, baseY - 54);
+      ctx.lineTo(cx + 38, baseY - 38);
+      ctx.closePath();
+      ctx.fill();
+      // 본 건물
+      const wall = ctx.createLinearGradient(cx - 30, 0, cx + 12, 0);
+      wall.addColorStop(0, '#a98a5f');
+      wall.addColorStop(0.55, '#8f7049');
+      wall.addColorStop(1, '#6d5436');
+      ctx.fillStyle = wall;
+      ctx.beginPath();
+      ctx.roundRect(cx - 30, baseY - 44, 42, 44, 2);
+      ctx.fill();
+      // 지붕
+      const roof = ctx.createLinearGradient(cx - 36, baseY - 70, cx + 18, baseY - 42);
+      roof.addColorStop(0, '#d0674a');
+      roof.addColorStop(1, '#8e3f2c');
+      ctx.fillStyle = roof;
+      ctx.beginPath();
+      ctx.moveTo(cx - 36, baseY - 42);
+      ctx.lineTo(cx - 9, baseY - 70);
+      ctx.lineTo(cx + 18, baseY - 42);
+      ctx.closePath();
+      ctx.fill();
+      // 문과 창
+      ctx.fillStyle = '#4a3421';
+      ctx.beginPath();
+      ctx.roundRect(cx - 16, baseY - 22, 14, 22, [6, 6, 0, 0]);
+      ctx.fill();
+      ctx.fillStyle = '#f5d98a';
+      ctx.beginPath();
+      ctx.roundRect(cx - 1, baseY - 34, 10, 10, 2);
+      ctx.fill();
+      ctx.strokeStyle = '#4a3421';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(cx + 4, baseY - 34);
+      ctx.lineTo(cx + 4, baseY - 24);
+      ctx.moveTo(cx - 1, baseY - 29);
+      ctx.lineTo(cx + 9, baseY - 29);
+      ctx.stroke();
+      // 간판
+      ctx.fillStyle = '#e0b64a';
+      ctx.beginPath();
+      ctx.roundRect(cx - 40, baseY - 34, 10, 8, 2);
+      ctx.fill();
     };
 
     const drawPlayer = (px: number, py: number, walking: boolean, t: number) => {
@@ -371,18 +487,95 @@ export function FieldMap({
       const x1 = Math.min(map.cols - 1, Math.ceil((camX + viewport.w) / TILE_SIZE));
       const y1 = Math.min(map.rows - 1, Math.ceil((camY + viewport.h) / TILE_SIZE));
 
+      // 1) 연속 바닥
+      drawGroundLayer(camX, camY, x0, y0, x1, y1);
+
+      // 2) 물·용암은 바닥을 덮는 지형
       for (let y = y0; y <= y1; y++) {
         for (let x = x0; x <= x1; x++) {
-          drawTile(tiles[y][x], Math.round(x * TILE_SIZE - camX), Math.round(y * TILE_SIZE - camY), x, y);
+          const k = tiles[y][x];
+          if (k !== 'water' && k !== 'lava') continue;
+          const img = getProp(k, theme, x, y);
+          if (img) ctx.drawImage(img, Math.round(x * TILE_SIZE - camX), Math.round(y * TILE_SIZE - camY));
         }
       }
 
-      for (const o of objects) {
-        if (o.x < x0 - 1 || o.x > x1 + 1 || o.y < y0 - 1 || o.y > y1 + 1) continue;
-        drawObject(o, Math.round(o.x * TILE_SIZE - camX), Math.round(o.y * TILE_SIZE - camY));
+      // 2b) 평지 장식 — 빈 바닥을 메운다
+      for (let y = y0; y <= y1; y++) {
+        for (let x = x0; x <= x1; x++) {
+          const k = tiles[y][x];
+          if (k !== 'grass' && k !== 'path' && k !== 'sand' && k !== 'ice') continue;
+          const roll = hash2(x, y, 77);
+          if (roll > 0.42) continue;
+          const img = decorSprite(theme, Math.floor(hash2(x, y, 88) * 9));
+          const dx = (hash2(x, y, 303) - 0.5) * 16;
+          const dy = (hash2(x, y, 404) - 0.5) * 16;
+          ctx.drawImage(img, Math.round(x * TILE_SIZE - camX + dx), Math.round(y * TILE_SIZE - camY + dy));
+        }
       }
 
-      drawPlayer(fx * TILE_SIZE - camX, fy * TILE_SIZE - camY, !!mv, mv ? mv.t : 0);
+      // 3) 프롭과 오브젝트를 y순으로 그려 앞뒤가 겹치게 한다
+      type Drawable = { y: number; draw: () => void };
+      const layer: Drawable[] = [];
+      for (let y = y0; y <= y1; y++) {
+        for (let x = x0; x <= x1; x++) {
+          const k = tiles[y][x];
+          if (k !== 'tree' && k !== 'rock' && k !== 'tall-grass') continue;
+          const img = getProp(k, theme, x, y);
+          if (!img) continue;
+          /*
+           * 프롭을 칸 정중앙에 놓으면 32px 격자를 따라 줄이 보인다. 좌표 해시로
+           * 칸 안팎으로 흔들어 배치해야 지형처럼 읽힌다.
+           */
+          const jx = (hash2(x, y, 101) - 0.5) * 18;
+          const jy = (hash2(x, y, 202) - 0.5) * 12;
+          const px = Math.round(x * TILE_SIZE - camX + jx);
+          const py = Math.round(y * TILE_SIZE - camY + jy) - (img.height - TILE_SIZE);
+          layer.push({ y: y * TILE_SIZE + jy, draw: () => ctx.drawImage(img, px, py) });
+        }
+      }
+      for (const o of objects) {
+        if (o.x < x0 - 2 || o.x > x1 + 2 || o.y < y0 - 2 || o.y > y1 + 2) continue;
+        const px = Math.round(o.x * TILE_SIZE - camX);
+        const py = Math.round(o.y * TILE_SIZE - camY);
+        /*
+         * 마을·던전은 타일 하나보다 훨씬 높게 그려서, 그 위쪽 칸에 서 있으면
+         * 플레이어가 건물에 완전히 가려진다(스폰이 마을 바로 위라 실제로 캐릭터가
+         * 사라졌다). 뒤에 서 있을 때는 반투명으로 낮춰 비쳐 보이게 한다.
+         */
+        const tall = o.kind === 'town' || o.kind === 'dungeon';
+        const behind =
+          tall && Math.abs(fx - o.x) <= 1.5 && fy < o.y && fy > o.y - (o.kind === 'town' ? 2.6 : 2);
+        layer.push({
+          y: o.y * TILE_SIZE + 1,
+          draw: () => {
+            if (behind) ctx.globalAlpha = 0.45;
+            drawObject(o, px, py);
+            ctx.globalAlpha = 1;
+          },
+        });
+      }
+      layer.push({
+        y: fy * TILE_SIZE + 2,
+        draw: () => drawPlayer(fx * TILE_SIZE - camX, fy * TILE_SIZE - camY, !!mv, mv ? mv.t : 0),
+      });
+      layer.sort((a, b) => a.y - b.y);
+      for (const d of layer) d.draw();
+
+      // 4) 분위기 오버레이와 비네트
+      const [ambColor, ambAlpha] = themeFor(theme).ambient;
+      ctx.globalAlpha = ambAlpha;
+      ctx.fillStyle = ambColor;
+      ctx.fillRect(0, 0, viewport.w, viewport.h);
+      ctx.globalAlpha = 1;
+      const vg = ctx.createRadialGradient(
+        viewport.w / 2, viewport.h / 2, Math.min(viewport.w, viewport.h) * 0.35,
+        viewport.w / 2, viewport.h / 2, Math.max(viewport.w, viewport.h) * 0.72,
+      );
+      vg.addColorStop(0, 'rgba(0,0,0,0)');
+      vg.addColorStop(1, 'rgba(0,0,0,0.20)');
+      ctx.fillStyle = vg;
+      ctx.fillRect(0, 0, viewport.w, viewport.h);
 
       raf = requestAnimationFrame(frame);
     };

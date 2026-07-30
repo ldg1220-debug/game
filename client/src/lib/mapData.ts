@@ -181,20 +181,28 @@ export function generateMap(regionId: string): GeneratedMap {
     for (let x = 0; x < cols; x++) {
       // 테두리는 막는다
       if (x === 0 || y === 0 || x === cols - 1 || y === rows - 1) {
-        row.push(terrain.blockers[0]);
+        // 같은 블로커만 두면 경계가 똑같은 나무 줄로 보인다. 위치별로 섞는다.
+        const pick = Math.floor(hash(seed + 7, x, y) * terrain.blockers.length);
+        row.push(terrain.blockers[pick % terrain.blockers.length]);
         continue;
       }
-      const n = smoothNoise(seed, x, y, 4.5);
+      /*
+       * 단일 옥타브 노이즈는 같은 값이 가로로 길게 이어져 바위가 띠처럼 늘어섰다.
+       * 스케일이 다른 두 옥타브를 섞고 x/y 스케일을 다르게 줘 방향성을 깬다.
+       */
+      const n =
+        smoothNoise(seed, x, y * 1.7, 5.5) * 0.6 +
+        smoothNoise(seed + 411, x * 1.6, y, 2.7) * 0.4;
       const n2 = smoothNoise(seed + 99, x, y, 2.5);
 
-      if (n > 0.72) {
+      // 밀도: 벌판이 비어 보이지 않도록 블로커와 수풀 비중을 올린다
+      if (n > 0.6) {
         row.push(terrain.blockers[Math.floor(n2 * terrain.blockers.length) % terrain.blockers.length]);
-      } else if (n < 0.36) {
+      } else if (n < 0.46) {
         row.push(terrain.encounterTile);
       } else {
         row.push(terrain.base);
       }
-      void 0;
     }
     tiles.push(row);
   }
