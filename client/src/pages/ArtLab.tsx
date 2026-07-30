@@ -25,17 +25,17 @@ export default function ArtLab() {
             className={`px-3 py-1 rounded text-xs ${element === e ? 'bg-gold-500 text-ink-950' : 'panel'}`}>{ELEMENT_LABEL[e]}</button>
         ))}
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3">
         {ids.map((id) => (
           <div key={id} className="panel p-2">
             <p className="text-[11px] text-center mb-1">{getShape(id).name}</p>
-            <div className="flex items-center justify-center gap-1">
+            <div className="flex items-center justify-center gap-4">
               <div className="text-center">
-                <PetSprite shapeId={id} element={element} size={80} motion="idle" />
+                <PetSprite shapeId={id} element={element} size={64} motion="idle" />
                 <p className="text-[9px] text-slate-500">2D SVG</p>
               </div>
               <div className="text-center">
-                <PetSprite3D shapeId={id} element={element} size={80} pose={pose} />
+                <PetSprite3D shapeId={id} element={element} size={150} pose={pose} />
                 <p className="text-[9px] text-gold-300">3D 절차적</p>
               </div>
             </div>

@@ -41,7 +41,7 @@ let shared: {
 function getShared() {
   if (shared) return shared;
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2.5));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -54,7 +54,7 @@ function getShared() {
   const key = new THREE.DirectionalLight(0xfff4e0, 2.6);
   key.position.set(3, 5, 4);
   key.castShadow = true;
-  key.shadow.mapSize.set(512, 512);
+  key.shadow.mapSize.set(1024, 1024);
   key.shadow.camera.near = 0.5;
   key.shadow.camera.far = 20;
   const c = key.shadow.camera as THREE.OrthographicCamera;
@@ -73,6 +73,30 @@ function getShared() {
   const rim = new THREE.DirectionalLight(0xffd9a0, 1.1);
   rim.position.set(-2, 3, -5);
   scene.add(rim);
+
+  /*
+   * 절차적 환경맵. envMap이 없으면 MeshStandardMaterial의 스페큘러가 거의
+   * 죽어서 재질이 물감처럼 납작해진다. 하늘/지면 그라디언트를 담은 작은
+   * 큐브맵을 구워 반사에 물려준다.
+   */
+  const envCanvas = document.createElement('canvas');
+  envCanvas.width = 64;
+  envCanvas.height = 64;
+  const ectx = envCanvas.getContext('2d')!;
+  const eg = ectx.createLinearGradient(0, 0, 0, 64);
+  eg.addColorStop(0, '#dcecff');
+  eg.addColorStop(0.45, '#8fa8c8');
+  eg.addColorStop(0.55, '#6b5a44');
+  eg.addColorStop(1, '#2a2118');
+  ectx.fillStyle = eg;
+  ectx.fillRect(0, 0, 64, 64);
+  const envTex = new THREE.CubeTexture([
+    envCanvas, envCanvas, envCanvas, envCanvas, envCanvas, envCanvas,
+  ] as unknown as HTMLCanvasElement[]);
+  envTex.needsUpdate = true;
+  envTex.colorSpace = THREE.SRGBColorSpace;
+  scene.environment = envTex;
+  scene.environmentIntensity = 0.5;
 
   const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
   camera.position.set(2.9, 1.35, 3.0);
@@ -98,13 +122,22 @@ interface Zones {
 
 function makeZones(body: PetBody, pal: { main: string; sub: string; accent: string; dark: string }, seed: number): Zones {
   const surf = body.surface;
+  /*
+   * accent(#FFD700 같은 형광 강조색)를 배·주둥이 같은 넓은 면에 칠했더니
+   * 주둥이가 거대한 노란 원이 되고 그 끝의 검은 코가 동공처럼 보여서
+   * 얼굴이 외눈으로 읽혔다. 넓은 면은 주색을 밝게/어둡게 민 톤으로만 쓰고,
+   * 형광 강조색은 눈 홍채와 발톱 같은 아주 작은 부분에만 남긴다.
+   */
+  const tint = (hex: string, t: number) =>
+    '#' + new THREE.Color(hex).lerp(new THREE.Color(t > 0 ? 0xffffff : 0x000000), Math.abs(t)).getHexString();
+
   return {
     base: petMaterial(surf, pal.main, seed, surf === 'scale' ? 1.1 : 1.25),
-    belly: petMaterial(surf, pal.accent, seed + 3, 1.1),
+    belly: petMaterial(surf, tint(pal.main, 0.34), seed + 3, 1.1),
     accent: petMaterial(surf, pal.sub, seed + 7, 1.1),
-    paw: petMaterial(surf, pal.dark, seed + 11, 1.4),
+    paw: petMaterial(surf, tint(pal.main, -0.42), seed + 11, 1.4),
     ink: new THREE.MeshStandardMaterial({ color: 0x120e1c, roughness: 0.34 }),
-    iris: new THREE.MeshStandardMaterial({ color: pal.sub, roughness: 0.2, emissive: pal.sub, emissiveIntensity: 0.25 }),
+    iris: new THREE.MeshStandardMaterial({ color: pal.sub, roughness: 0.22, metalness: 0.1 }),
     sclera: new THREE.MeshStandardMaterial({ color: 0xfdfaf2, roughness: 0.16 }),
   };
 }
@@ -132,8 +165,8 @@ function buildPet(body: PetBody, pal: { main: string; sub: string; accent: strin
     return m;
   };
 
-  const sphere = (r: number, seg = 22) => new THREE.SphereGeometry(r, seg, seg);
-  const capsule = (r: number, len: number) => new THREE.CapsuleGeometry(r, len, 6, 16);
+  const sphere = (r: number, seg = 28) => new THREE.SphereGeometry(r, seg, seg);
+  const capsule = (r: number, len: number) => new THREE.CapsuleGeometry(r, len, 10, 22);
   const cone = (r: number, h: number, seg = 12) => new THREE.ConeGeometry(r, h, seg);
 
   /**
@@ -142,14 +175,18 @@ function buildPet(body: PetBody, pal: { main: string; sub: string; accent: strin
    */
   const face = (cx: number, cy: number, scale: number, gap: number) => {
     for (const side of [-1, 1]) {
-      const ez = side * gap;
+      // 눈을 머리 옆면 쪽으로 더 벌린다. 3/4 시점에서 두 눈이 겹쳐 외눈처럼 보였다.
+      const ez = side * gap * 1.5;
+      // 바깥으로 갈수록 살짝 뒤로 물러나 머리 곡면을 따른다
+      cx -= 0;
       // 눈두덩은 얕게. 이전엔 흰자가 머리 지름의 1/3이라 눈알이 튀어나와 보였다.
-      const r = 0.062 * scale;
-      add(sphere(r * 1.18, 12), z.paw, [cx - 0.03, cy + 0.008, ez], undefined, [0.5, 1, 1]);
-      add(sphere(r, 18), z.sclera, [cx, cy, ez], undefined, [0.85, 1, 1]);
-      add(sphere(r * 0.66, 16), z.iris, [cx + r * 0.5, cy, ez + side * 0.008]);
-      add(sphere(r * 0.34, 12), z.ink, [cx + r * 0.74, cy, ez + side * 0.011]);
-      add(sphere(r * 0.19, 8), z.sclera, [cx + r * 0.8, cy + r * 0.4, ez + side * 0.014]);
+      const r = 0.078 * scale;
+      const back = -Math.abs(gap) * 0.55;
+      add(sphere(r * 1.22, 14), z.paw, [cx + back - 0.02, cy + 0.008, ez], undefined, [0.5, 1, 1]);
+      add(sphere(r, 20), z.sclera, [cx + back, cy, ez], undefined, [0.88, 1, 1]);
+      add(sphere(r * 0.64, 18), z.iris, [cx + back + r * 0.46, cy, ez + side * 0.02]);
+      add(sphere(r * 0.32, 14), z.ink, [cx + back + r * 0.7, cy, ez + side * 0.026]);
+      add(sphere(r * 0.18, 10), z.sclera, [cx + back + r * 0.76, cy + r * 0.42, ez + side * 0.03]);
     }
   };
 
@@ -187,16 +224,17 @@ function buildPet(body: PetBody, pal: { main: string; sub: string; accent: strin
     // 주둥이 — 길이로 종을 구분한다 (여우는 길고 토끼는 짧다)
     const snout = body.snout ?? 0.5;
     const sx = headX + 0.2 * ph + snout * 0.14;
-    add(capsule(0.115 * ph, 0.1 + snout * 0.22), z.belly, [sx - 0.05, headY - 0.06, 0], [0, 0, Math.PI / 2]);
-    add(sphere(0.062), z.ink, [sx + 0.1 + snout * 0.1, headY - 0.045, 0]);
+    const muzzle = add(capsule(0.088 * ph, 0.08 + snout * 0.2), z.belly, [sx - 0.06, headY - 0.09, 0], [0, 0, Math.PI / 2]);
+    muzzle.scale.set(1, 1, 0.82);
+    add(sphere(0.042), z.ink, [sx + 0.08 + snout * 0.1, headY - 0.075, 0]);
     // 입선
-    add(new THREE.TorusGeometry(0.05, 0.012, 6, 12, Math.PI), z.ink, [
-      sx + 0.03,
-      headY - 0.13,
+    add(new THREE.TorusGeometry(0.042, 0.01, 6, 14, Math.PI), z.ink, [
+      sx + 0.02,
+      headY - 0.15,
       0,
     ], [Math.PI / 2, 0, Math.PI]);
 
-    face(headX + 0.17 * ph, headY + 0.1, ph, 0.155);
+    face(headX + 0.2 * ph, headY + 0.14, ph, 0.15);
 
     // 눈썹 능선 — 표정을 만든다
     for (const side of [-1, 1]) {
@@ -223,17 +261,59 @@ function buildPet(body: PetBody, pal: { main: string; sub: string; accent: strin
       }
     }
 
-    // 다리 — 앞다리는 곧고 뒷다리는 굽은 느낌
-    for (const [fx, thick] of [
-      [0.32, 0.095],
-      [-0.3, 0.11],
-    ] as [number, number][]) {
+    /*
+     * 다리 — 이전엔 관절 없는 막대 하나여서 디테일이 없었다.
+     * 상완/하완을 나누고 각도를 줘 무릎을 만들고, 발가락 3개와 발톱을 붙인다.
+     */
+    for (const [fx, thick, knee] of [
+      [0.33, 0.1, 0.18],
+      [-0.31, 0.115, -0.3],
+    ] as [number, number, number][]) {
       for (const side of [-1, 1]) {
-        add(capsule(thick, 0.28), z.base, [fx * pl, 0.3, side * 0.22]);
-        // 발 (어두운 톤)
-        const paw = add(sphere(0.115, 14), z.paw, [fx * pl + 0.03, 0.1, side * 0.22]);
-        paw.scale.set(1.15, 0.8, 1);
+        const zz = side * 0.23;
+        // 어깨/허벅지
+        const upper = add(capsule(thick, 0.16), z.base, [fx * pl, 0.42, zz], [0, 0, knee * 0.5]);
+        upper.scale.set(1.15, 1, 1.15);
+        // 정강이
+        add(capsule(thick * 0.78, 0.17), z.base, [fx * pl + knee * 0.06, 0.24, zz], [0, 0, -knee * 0.3]);
+        // 발
+        const paw = add(sphere(0.1, 16), z.paw, [fx * pl + 0.04, 0.09, zz]);
+        paw.scale.set(1.3, 0.72, 1.05);
+        // 발가락 + 발톱
+        for (const t of [-1, 0, 1]) {
+          add(sphere(0.038, 10), z.paw, [fx * pl + 0.1, 0.075, zz + t * 0.045]);
+          add(cone(0.016, 0.05, 6), z.belly, [fx * pl + 0.145, 0.07, zz + t * 0.045], [0, 0, -Math.PI / 2]);
+        }
       }
+    }
+
+    // 목 — 머리와 몸통이 뚝 끊겨 보이던 걸 잇는다
+    add(capsule(0.19 * pw, 0.14), z.base, [0.45 * pl, 0.8, 0], [0, 0, -0.7]);
+
+    // 등털 — 실루엣에 결을 준다
+    for (let i = 0; i < 5; i++) {
+      const t = i / 4;
+      add(cone(0.05 - t * 0.015, 0.13, 6), z.accent, [
+        (0.28 - t * 0.55) * pl,
+        0.94 - t * 0.06,
+        0,
+      ], [0, 0, -0.25]);
+    }
+
+    // 가슴털
+    const ruff = add(sphere(0.17, 18), z.belly, [0.4 * pl, 0.54, 0.05]);
+    ruff.scale.set(0.7, 0.85, 1.05);
+
+    // 수염과 콧구멍
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 2; i++) {
+        add(capsule(0.0045, 0.11), z.sclera, [
+          sx + 0.02,
+          headY - 0.04 + i * 0.03,
+          side * 0.09,
+        ], [0, side * (0.5 + i * 0.18), Math.PI / 2 - 0.1]);
+      }
+      add(sphere(0.017, 8), z.ink, [sx + 0.11 + snout * 0.1, headY - 0.02, side * 0.032]);
     }
 
     // 꼬리

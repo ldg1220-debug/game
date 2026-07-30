@@ -93,7 +93,7 @@ export interface PetMaterialSet {
   ormMap: THREE.DataTexture;
 }
 
-const SIZE = 128;
+const SIZE = 256;
 const cache = new Map<string, PetMaterialSet>();
 
 function srgb(v: number): number {
@@ -111,7 +111,7 @@ function heightField(kind: SurfaceKind, noise: TileNoise): Float32Array {
       switch (kind) {
         case 'fur':
           // 결이 한 방향으로 흐르도록 v를 늘려 샘플링한다
-          value = noise.ridge(u * 1.0, v * 3.0, 9, 3) * 0.62 + noise.fbm(u, v, 4, 3) * 0.38;
+          value = noise.ridge(u * 1.0, v * 2.2, 26, 3) * 0.5 + noise.fbm(u, v, 9, 4) * 0.5;
           break;
         case 'scale': {
           // 어긋나게 쌓인 비늘 격자
@@ -168,7 +168,7 @@ export function bakePetMaterial(kind: SurfaceKind, baseColor: string, seed: numb
   const baseRough = kind === 'slime' ? 0.22 : kind === 'scale' ? 0.42 : kind === 'rock' ? 0.9 : 0.72;
   const baseMetal = kind === 'scale' ? 0.18 : kind === 'rock' ? 0.05 : 0.0;
   // 높이장이 색을 얼마나 흔드는지
-  const tone = kind === 'slime' ? 0.1 : kind === 'rock' ? 0.28 : 0.17;
+  const tone = kind === 'slime' ? 0.1 : kind === 'rock' ? 0.3 : 0.24;
 
   for (let y = 0; y < SIZE; y++) {
     for (let x = 0; x < SIZE; x++) {
@@ -189,7 +189,7 @@ export function bakePetMaterial(kind: SurfaceKind, baseColor: string, seed: numb
       const dy =
         at(x - 1, y - 1) + 2 * at(x, y - 1) + at(x + 1, y - 1) -
         (at(x - 1, y + 1) + 2 * at(x, y + 1) + at(x + 1, y + 1));
-      const strength = kind === 'slime' ? 0.9 : 1.5;
+      const strength = kind === 'slime' ? 1.0 : 1.7;
       const nx = dx * strength;
       const ny = dy * strength;
       const nz = 1;
@@ -242,12 +242,13 @@ export function petMaterial(
     return c;
   };
   return new THREE.MeshStandardMaterial({
+    envMapIntensity: 0.55,
     map: clone(set.map),
     normalMap: clone(set.normalMap),
     aoMap: clone(set.ormMap),
     roughnessMap: clone(set.ormMap),
     metalnessMap: clone(set.ormMap),
-    normalScale: new THREE.Vector2(0.55, 0.55),
+    normalScale: new THREE.Vector2(0.62, 0.62),
     roughness: 1,
     metalness: 1,
   });
