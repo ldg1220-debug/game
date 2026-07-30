@@ -773,12 +773,35 @@ function frame(group: THREE.Group) {
   group.position.set(-sph.center.x * s, -box.min.y * s, -sph.center.z * s);
 }
 
+/** 2D 스프라이트의 모션 이름을 3D 포즈로 옮긴다. walk는 idle과 같은 흔들림으로 처리한다. */
+export function poseFromMotion(motion: string): PetPose {
+  return motion === 'walk' ? 'idle' : (motion as PetPose);
+}
+
+/**
+ * 도감처럼 수십 개가 한 화면에 뜰 때를 위한 예산.
+ * 캔버스마다 매 프레임 렌더하면 40개 기준 초당 2400회 그리게 된다.
+ * 화면 밖은 아예 멈추고, 보이는 것도 30fps로 제한한다.
+ */
+const FRAME_MS = 1000 / 30;
+
+/**
+ * 정지 프레임 캐시.
+ *
+ * 도감을 3D로 바꾸자 42개 캔버스가 각자 애니메이션을 돌려 2fps가 나왔다.
+ * 목록 화면의 작은 썸네일은 움직일 이유가 없다. 종·속성·크기별로 한 번만
+ * 굽고 그 비트맵을 재사용하면 같은 종이 여러 번 나와도 렌더는 한 번이다.
+ */
+const stillCache = new Map<string, HTMLCanvasElement>();
+
 export function PetSprite3D({
   shapeId,
   element,
   size = 96,
   pose = 'idle',
   seed = 1,
+  flipped = false,
+  animated = true,
   className,
 }: {
   shapeId: number;
@@ -786,6 +809,10 @@ export function PetSprite3D({
   size?: number;
   pose?: PetPose;
   seed?: number;
+  /** 전투에서 상대 진영은 좌우를 뒤집어 마주 보게 한다 */
+  flipped?: boolean;
+  /** false면 한 프레임만 굽고 멈춘다. 목록·도감 썸네일용. */
+  animated?: boolean;
   className?: string;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -797,6 +824,32 @@ export function PetSprite3D({
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    // 화면에 없으면 렌더를 멈춘다
+    let visible = true;
+    const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; }, { rootMargin: '80px' });
+    io.observe(canvas);
+    let last = 0;
+
+    const drawFrom = (src: CanvasImageSource) => {
+      ctx.save();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (flipped) {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+      ctx.drawImage(src, 0, 0, canvas.width, canvas.height);
+      ctx.restore();
+    };
+
+    const stillKey = `${shapeId}|${element}|${size}|${pose}|${seed}`;
+    if (!animated) {
+      const hit = stillCache.get(stillKey);
+      if (hit) {
+        drawFrom(hit);
+        return;
+      }
+    }
 
     const { renderer, scene, camera } = getShared();
     const body = PET_BODIES[shapeId] ?? PET_BODIES[1];
@@ -821,7 +874,11 @@ export function PetSprite3D({
     const t0 = performance.now();
 
     const frameLoop = () => {
-      const t = (performance.now() - t0) / 1000;
+      raf = requestAnimationFrame(frameLoop);
+      const now = performance.now();
+      if (animated && (!visible || now - last < FRAME_MS)) return;
+      last = now;
+      const t = (now - t0) / 1000;
       const p = poseRef.current;
 
       // 포즈별 절차적 애니메이션
@@ -851,19 +908,28 @@ export function PetSprite3D({
       renderer.render(scene, camera);
       scene.remove(group);
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(renderer.domElement, 0, 0, canvas.width, canvas.height);
-      raf = requestAnimationFrame(frameLoop);
+      drawFrom(renderer.domElement);
+
+      if (!animated) {
+        // 구운 프레임을 캐시에 복사해 두고 루프를 끝낸다
+        const still = document.createElement('canvas');
+        still.width = size;
+        still.height = size;
+        still.getContext('2d')?.drawImage(renderer.domElement, 0, 0, size, size);
+        stillCache.set(stillKey, still);
+        cancelAnimationFrame(raf);
+      }
     };
     raf = requestAnimationFrame(frameLoop);
 
     return () => {
       cancelAnimationFrame(raf);
+      io.disconnect();
       group.traverse((o) => {
         if (o instanceof THREE.Mesh) o.geometry.dispose();
       });
     };
-  }, [shapeId, element, size, seed]);
+  }, [shapeId, element, size, seed, flipped, pose, animated]);
 
   const dpr = Math.min(typeof devicePixelRatio === 'number' ? devicePixelRatio : 1, 2);
   return (

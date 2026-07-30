@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { useGame } from '../contexts/GameContext';
 import { useEncounter } from '../contexts/EncounterContext';
 import { BattleArena } from '../components/BattleArena';
-import { PetSprite } from '../components/PetSprite';
+import { PetSprite3D } from '../components/PetSprite3D';
 import { StatusBadge } from '../components/ElementBadge';
 import {
   chooseEnemyAction,
@@ -237,10 +237,12 @@ export default function BattleScreen() {
           {captured && (
             <div className="flex flex-col items-center gap-2">
               <div className="rounded-xl bg-ink-800/60 border border-gold-500/30 p-2">
-                <PetSprite
+                <PetSprite3D
                   shapeId={captured.shapeId}
                   element={dominantElement(captured.elementPoints)}
-                  size={88}
+                  size={104}
+                  pose="victory"
+                  seed={captured.shapeId}
                 />
               </div>
               <p className="text-xs text-gold-300">
@@ -399,7 +401,7 @@ export default function BattleScreen() {
                 className="panel shrink-0 w-24 p-2 text-center disabled:opacity-30"
               >
                 <div className="flex justify-center">
-                  <PetSprite shapeId={c.shapeId!} element={dominantElement(c.elementPoints)} size={40} />
+                  <PetSprite3D shapeId={c.shapeId!} element={dominantElement(c.elementPoints)} size={56} seed={c.shapeId!} animated={false} />
                 </div>
                 <div className="text-[11px] truncate">{getShape(c.shapeId!).name}</div>
                 <div className="text-[10px] text-slate-400">

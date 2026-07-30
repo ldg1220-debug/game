@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { PetSprite } from '../components/PetSprite';
+import { PetSprite3D } from '../components/PetSprite3D';
 import { getRegion, getShape, isEvolvedForm, REGIONS } from '../lib/petData';
 import { growthTierLabel } from '../lib/petUtils';
 import { CORE_ELEMENTS, ELEMENT_LABEL, type CoreElement } from '../lib/gameTypes';
@@ -102,14 +103,24 @@ export default function Pokedex() {
                 return (
                   <div key={entry.shapeId} className="panel p-2 text-center">
                     <div className="flex justify-center">
-                      <PetSprite
-                        shapeId={entry.shapeId}
-                        element={shape.elementBias[0]}
-                        size={52}
-                        silhouette={!entry.caught}
-                        motion={entry.caught ? 'idle' : undefined}
-                        label={entry.caught ? shape.name : '미포획 펫'}
-                      />
+                      {/* 미포획은 실루엣이라 평면 SVG가 맞고, 포획한 종만 3D로 보여준다 */}
+                      {entry.caught ? (
+                        <PetSprite3D
+                          shapeId={entry.shapeId}
+                          element={shape.elementBias[0]}
+                          size={72}
+                          seed={entry.shapeId}
+                          animated={false}
+                        />
+                      ) : (
+                        <PetSprite
+                          shapeId={entry.shapeId}
+                          element={shape.elementBias[0]}
+                          size={52}
+                          silhouette
+                          label="미포획 펫"
+                        />
+                      )}
                     </div>
                     <p className={`text-[11px] mt-1 truncate ${entry.caught ? '' : 'text-slate-500'}`}>
                       {entry.caught ? shape.name : '???'}

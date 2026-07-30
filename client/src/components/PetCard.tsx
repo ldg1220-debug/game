@@ -2,7 +2,7 @@ import { dominantElement, type PetInstance } from '../lib/gameTypes';
 import { getShape } from '../lib/petData';
 import { getMaxHp, growthTierLabel } from '../lib/petUtils';
 import { ElementPointsBadge } from './ElementBadge';
-import { PetSprite } from './PetSprite';
+import { PetSprite3D } from './PetSprite3D';
 
 function growthTierClass(avg: number, isLegendary: boolean): string {
   if (isLegendary) return 'text-transparent bg-clip-text bg-gradient-to-r from-gold-300 via-pink-300 to-gold-400';
@@ -41,10 +41,12 @@ export function PetCard({
             pet.currentHp <= 0 ? 'opacity-30 grayscale' : ''
           }`}
         >
-          <PetSprite
+          <PetSprite3D
             shapeId={pet.shapeId}
             element={dominantElement(pet.elementPoints)}
-            size={compact ? 44 : 56}
+            size={compact ? 52 : 68}
+            seed={pet.shapeId}
+            animated={false}
           />
         </div>
 
