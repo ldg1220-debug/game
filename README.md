@@ -20,7 +20,8 @@ npm run build    # 타입체크 + 프로덕션 빌드
 - **포획**: 포켓볼 4종, 대상 HP·희귀도·레벨차 기반 포획률
 - **성장률**: 6개 스탯 각각 독립 성장률(0.85~1.15배), 피라미드형 등급 분포, 전설 개체
 - **육성**: 경험치·레벨업, 팀(최대 5)/보관함, 포션 회복
-- **도감**: 포획 종 기록 및 완성도
+- **펫 아트**: 14종 고유 SVG 스프라이트. 형상이 실루엣을, 속성이 색을 결정
+- **도감**: 포획 종 기록 및 완성도 (미포획 종은 실루엣 표시)
 - **PvP**: AI 팀과의 아레나 매치, 랭킹 점수
 - **저장**: localStorage 자동 저장
 
@@ -38,7 +39,8 @@ client/src/
     encounterEngine.ts 야생 조우 추첨 · 보상
     storage.ts         저장/불러오기
   contexts/            GameContext(전역 상태), EncounterContext(전투 인계)
-  components/          PetCard, PetTeam, BattleArena, Map, BottomNav, ElementBadge
+  components/          PetSprite(펫 아트), PetCard, PetTeam, BattleArena, Map,
+                       BottomNav, ElementBadge
   pages/               Home, Explore, Battle, PetManagement, Pokedex, PvP, Settings
 ```
 
@@ -95,6 +97,21 @@ Lv.1 기준 한 번의 공격이 95 데미지가 나오는 반면 Lv.1 펫의 �
 
 문서에 명시된 사양이라 **임의로 바꾸지 않고 그대로 두었습니다.** 균형 잡힌
 4속성 사이클(화 > 풍 > 지 > 수 > 화)로 바꿀지는 별도 결정이 필요합니다.
+
+## 펫 아트에 관해
+
+`components/PetSprite.tsx` 한 파일에 14종의 SVG가 들어 있습니다. 이미지 파일을
+쓰지 않은 이유는 기획의 "형상 × 속성" 구조 때문입니다. 같은 형상이라도 속성마다
+색이 달라야 하는데, SVG로 그리면 속성 색 하나로 자동 착색되므로 형상 14종 ×
+속성 5종을 파일 70개로 관리할 필요가 없습니다. 도감의 미포획 실루엣도 같은
+소스에 `silhouette` 플래그만 넘겨 처리합니다.
+
+새 펫을 추가할 때는 `petData.ts`의 `PET_SHAPES`에 종을 넣고 `PetSprite.tsx`의
+`ART` 맵에 같은 `id`로 아트를 추가하면 됩니다. 아트가 없으면 1번 형상으로
+대체되므로 데이터만 먼저 넣어도 깨지지 않습니다.
+
+나중에 일러스트로 교체하고 싶다면 `PetSprite` 내부만 `<img>`로 바꾸면 되고,
+호출부 5곳은 손대지 않아도 됩니다.
 
 ## 다음 단계 (Phase 2 이후)
 

@@ -2,6 +2,7 @@ import type { PetInstance } from '../lib/gameTypes';
 import { getShape } from '../lib/petData';
 import { getMaxHp } from '../lib/petUtils';
 import { ElementBadge } from './ElementBadge';
+import { PetSprite } from './PetSprite';
 
 export function PetTeam({
   team,
@@ -32,6 +33,9 @@ export function PetTeam({
               fainted ? 'opacity-40' : ''
             }`}
           >
+            <div className="flex justify-center">
+              <PetSprite shapeId={pet.shapeId} element={pet.elementPrimary} size={40} />
+            </div>
             <div className="flex justify-center gap-0.5 mb-1">
               <ElementBadge element={pet.elementPrimary} small />
               {pet.elementSecondary && <ElementBadge element={pet.elementSecondary} small />}

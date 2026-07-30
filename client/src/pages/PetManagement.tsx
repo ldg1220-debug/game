@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { PetCard } from '../components/PetCard';
 import { ElementBadge } from '../components/ElementBadge';
+import { PetSprite } from '../components/PetSprite';
 import { getShape } from '../lib/petData';
 import { getCurrentAbility, getCurrentStat, getMaxHp, growthTierLabel } from '../lib/petUtils';
 import { STAT_KEYS, type PetInstance } from '../lib/gameTypes';
@@ -97,15 +98,21 @@ function PetDetail({
         className="panel w-full max-w-lg max-h-[85vh] overflow-y-auto p-4 space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-heading text-lg">{pet.nickname || shape.name}</h2>
-            <div className="flex gap-1 mt-1">
-              <ElementBadge element={pet.elementPrimary} />
-              {pet.elementSecondary && <ElementBadge element={pet.elementSecondary} />}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-ink-800/60 border border-white/5 p-1">
+              <PetSprite shapeId={pet.shapeId} element={pet.elementPrimary} size={72} />
+            </div>
+            <div>
+              <h2 className="font-heading text-lg">{pet.nickname || shape.name}</h2>
+              {pet.isLegendary && <p className="text-[10px] text-gold-400">★ 서버 전설 개체</p>}
+              <div className="flex gap-1 mt-1">
+                <ElementBadge element={pet.elementPrimary} />
+                {pet.elementSecondary && <ElementBadge element={pet.elementSecondary} />}
+              </div>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 text-sm">
+          <button onClick={onClose} className="text-slate-400 text-sm shrink-0">
             닫기 ✕
           </button>
         </div>

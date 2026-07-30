@@ -1,5 +1,6 @@
 import { useGame } from '../contexts/GameContext';
 import { ElementBadge } from '../components/ElementBadge';
+import { PetSprite } from '../components/PetSprite';
 import { getShape } from '../lib/petData';
 
 export default function Pokedex() {
@@ -23,14 +24,25 @@ export default function Pokedex() {
         {state.pokedex.map((entry) => {
           const shape = getShape(entry.shapeId);
           return (
-            <div
-              key={`${entry.shapeId}-${entry.elementPrimary}`}
-              className={`panel p-2 text-center ${entry.caught ? '' : 'opacity-30 grayscale'}`}
-            >
+            <div key={`${entry.shapeId}-${entry.elementPrimary}`} className="panel p-2 text-center">
               <div className="flex justify-center">
-                <ElementBadge element={entry.elementPrimary} small />
+                <PetSprite
+                  shapeId={entry.shapeId}
+                  element={entry.elementPrimary}
+                  size={52}
+                  silhouette={!entry.caught}
+                />
               </div>
-              <p className="text-[11px] mt-1 truncate">{entry.caught ? shape.name : '???'}</p>
+              <div className="flex justify-center mt-0.5">
+                {entry.caught ? (
+                  <ElementBadge element={entry.elementPrimary} small />
+                ) : (
+                  <span className="w-5 h-5 rounded-full bg-ink-700" />
+                )}
+              </div>
+              <p className={`text-[11px] mt-1 truncate ${entry.caught ? '' : 'text-slate-600'}`}>
+                {entry.caught ? shape.name : '???'}
+              </p>
               <p className="text-[10px] text-slate-500">{entry.caught ? `x${entry.count}` : ''}</p>
             </div>
           );

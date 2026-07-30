@@ -2,6 +2,7 @@ import type { PetInstance } from '../lib/gameTypes';
 import { getShape } from '../lib/petData';
 import { getMaxHp } from '../lib/petUtils';
 import { ElementBadge } from './ElementBadge';
+import { PetSprite } from './PetSprite';
 
 function Battler({ pet, flipped }: { pet: PetInstance; flipped?: boolean }) {
   const shape = getShape(pet.shapeId);
@@ -34,11 +35,11 @@ function Battler({ pet, flipped }: { pet: PetInstance; flipped?: boolean }) {
         </div>
       </div>
       <div
-        className={`w-20 h-20 rounded-full flex items-center justify-center text-4xl panel ${
-          pet.currentHp <= 0 ? 'opacity-30 grayscale' : ''
-        }`}
+        className={`w-24 h-24 rounded-full flex items-center justify-center panel transition ${
+          pet.currentHp <= 0 ? 'opacity-25 grayscale' : ''
+        } ${flipped ? '-scale-x-100' : ''}`}
       >
-        {shape.rarity === 'boss' ? '🐉' : '🐾'}
+        <PetSprite shapeId={pet.shapeId} element={pet.elementPrimary} size={80} />
       </div>
     </div>
   );
