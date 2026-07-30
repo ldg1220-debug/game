@@ -20,7 +20,17 @@ export default function Settings() {
         </div>
         <div className="flex justify-between">
           <span className="text-slate-400">포켓덱스 수집</span>
-          <span>{state.pokedex.filter((e) => e.caught).length} / {state.pokedex.length}</span>
+          <span>
+            {state.pokedex.filter((e) => e.caught).length} / {state.pokedex.length}
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-slate-400">개방한 지역</span>
+          <span>{state.unlockedRegionIds.length}곳</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-slate-400">보유 진화석</span>
+          <span>{state.evolutionStones}개</span>
         </div>
       </div>
 

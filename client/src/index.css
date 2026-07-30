@@ -75,6 +75,175 @@ h3,
   animation: float-up linear infinite;
 }
 
+/*
+ * 전투 모션.
+ * 스프라이트가 반전(-scale-x-100)될 수 있어서, 모든 키프레임은 상대 쪽 변형까지
+ * 포함한 짝을 따로 둔다. transform을 한 속성에서 합성해야 반전이 풀리지 않는다.
+ */
+
+/* 대기 중 호흡 */
+.animate-idle {
+  animation: idle-bob 2.6s ease-in-out infinite;
+}
+@keyframes idle-bob {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.02);
+  }
+}
+.-scale-x-100.animate-idle {
+  animation: idle-bob-flipped 2.6s ease-in-out infinite;
+}
+@keyframes idle-bob-flipped {
+  0%,
+  100% {
+    transform: scaleX(-1) translateY(0);
+  }
+  50% {
+    transform: scaleX(-1) translateY(-3px);
+  }
+}
+
+/* 공격 시 앞으로 돌진 */
+.animate-lunge {
+  animation: lunge 0.42s ease-out;
+}
+@keyframes lunge {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  35% {
+    transform: translate(14px, -6px) scale(1.06);
+  }
+}
+.-scale-x-100.animate-lunge {
+  animation: lunge-flipped 0.42s ease-out;
+}
+@keyframes lunge-flipped {
+  0%,
+  100% {
+    transform: scaleX(-1) translate(0, 0);
+  }
+  35% {
+    transform: scaleX(-1) translate(14px, -6px) scale(1.06);
+  }
+}
+
+/* 전투 진입 시 등장 */
+.animate-enter-left {
+  animation: enter-left 0.5s ease-out;
+}
+@keyframes enter-left {
+  from {
+    transform: translateX(-40px);
+    opacity: 0;
+  }
+}
+.animate-enter-right {
+  animation: enter-right 0.5s ease-out;
+}
+@keyframes enter-right {
+  from {
+    transform: scaleX(-1) translateX(-40px);
+    opacity: 0;
+  }
+  to {
+    transform: scaleX(-1);
+  }
+}
+
+/* 상성 히트 시 화면 섬광 */
+.animate-flash {
+  animation: flash 0.45s ease-out;
+}
+@keyframes flash {
+  0% {
+    background-color: rgba(255, 255, 255, 0.18);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-idle,
+  .animate-lunge,
+  .animate-hit,
+  .animate-enter-left,
+  .animate-enter-right,
+  .animate-flash {
+    animation: none;
+  }
+}
+
+/* 피격 시 흔들림 */
+.animate-hit {
+  animation: hit-shake 0.32s ease-out;
+}
+@keyframes hit-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(5px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+}
+/* 반전된 스프라이트는 흔들림에도 반전을 유지해야 한다 */
+.-scale-x-100.animate-hit {
+  animation: hit-shake-flipped 0.32s ease-out;
+}
+@keyframes hit-shake-flipped {
+  0%,
+  100% {
+    transform: scaleX(-1) translateX(0);
+  }
+  20% {
+    transform: scaleX(-1) translateX(-6px);
+  }
+  40% {
+    transform: scaleX(-1) translateX(5px);
+  }
+  60% {
+    transform: scaleX(-1) translateX(-3px);
+  }
+  80% {
+    transform: scaleX(-1) translateX(2px);
+  }
+}
+
+/* 데미지 숫자 팝업 */
+.animate-pop {
+  animation: pop-up 0.9s ease-out forwards;
+}
+@keyframes pop-up {
+  0% {
+    transform: translate(-50%, 6px) scale(0.7);
+    opacity: 0;
+  }
+  25% {
+    transform: translate(-50%, -8px) scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -26px) scale(1);
+    opacity: 0;
+  }
+}
+
 @keyframes float-up {
   0% {
     transform: translateY(0) scale(1);

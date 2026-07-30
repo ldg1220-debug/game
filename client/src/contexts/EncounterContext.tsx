@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import type { PetInstance } from '../lib/gameTypes';
 
-export type EncounterSource = 'field' | 'dungeon' | 'pvp';
+export type EncounterSource = 'field' | 'dungeon' | 'boss' | 'pvp';
 
 export interface Encounter {
   enemyTeam: PetInstance[];
@@ -9,6 +9,8 @@ export interface Encounter {
   canCapture: boolean;
   goldReward: number;
   expReward: number;
+  /** 보스 처치 시 해금되는 지역 */
+  unlocksRegionId?: string;
 }
 
 interface EncounterContextValue {

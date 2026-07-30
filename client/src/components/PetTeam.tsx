@@ -1,7 +1,7 @@
-import type { PetInstance } from '../lib/gameTypes';
+import { dominantElement, type PetInstance } from '../lib/gameTypes';
 import { getShape } from '../lib/petData';
 import { getMaxHp } from '../lib/petUtils';
-import { ElementBadge } from './ElementBadge';
+import { ElementPointsBadge } from './ElementBadge';
 import { PetSprite } from './PetSprite';
 
 export function PetTeam({
@@ -29,16 +29,15 @@ export function PetTeam({
             key={pet.id}
             onClick={() => onSelect?.(pet)}
             disabled={!onSelect || fainted}
-            className={`panel shrink-0 w-24 p-2 text-center ${activeId === pet.id ? 'border-gold-400 ring-1 ring-gold-400' : ''} ${
-              fainted ? 'opacity-40' : ''
-            }`}
+            className={`panel shrink-0 w-24 p-2 text-center ${
+              activeId === pet.id ? 'border-gold-400 ring-1 ring-gold-400' : ''
+            } ${fainted ? 'opacity-40' : ''}`}
           >
             <div className="flex justify-center">
-              <PetSprite shapeId={pet.shapeId} element={pet.elementPrimary} size={40} />
+              <PetSprite shapeId={pet.shapeId} element={dominantElement(pet.elementPoints)} size={40} />
             </div>
-            <div className="flex justify-center gap-0.5 mb-1">
-              <ElementBadge element={pet.elementPrimary} small />
-              {pet.elementSecondary && <ElementBadge element={pet.elementSecondary} small />}
+            <div className="flex justify-center mb-1">
+              <ElementPointsBadge points={pet.elementPoints} small max={2} />
             </div>
             <div className="text-xs truncate">{pet.nickname || shape.name}</div>
             <div className="text-[10px] text-slate-400">Lv.{pet.level}</div>

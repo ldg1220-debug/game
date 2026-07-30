@@ -1,5 +1,4 @@
-import type { Pokeball, PokeballType, PetInstance } from './gameTypes';
-import { getMaxHp } from './petUtils';
+import type { Pokeball, PokeballType, StatusEffect } from './gameTypes';
 import { getShape } from './petData';
 
 export const POKEBALLS: Record<PokeballType, Pokeball> = {
@@ -16,43 +15,49 @@ const RARITY_FACTOR: Record<string, number> = {
   boss: 0.3,
 };
 
-export type PetStatus = 'normal' | 'asleep' | 'frozen';
-
-const STATUS_MULTIPLIER: Record<PetStatus, number> = {
-  normal: 1.0,
-  asleep: 1.5,
-  frozen: 1.5,
+/** 문서 3.5: 정상 1.0 ~ 동결/수면 1.5 */
+const STATUS_MULTIPLIER: Record<StatusEffect, number> = {
+  sleep: 1.5,
+  freeze: 1.5,
+  paralysis: 1.3,
+  poison: 1.2,
+  burn: 1.2,
 };
 
 const BASE_CAPTURE_RATE = 0.4;
 
+export interface CaptureTarget {
+  shapeId: number;
+  level: number;
+  hp: number;
+  maxHp: number;
+  status: StatusEffect | null;
+}
+
 export function calculateCaptureRate(
-  pet: PetInstance,
+  target: CaptureTarget,
   pokeball: Pokeball,
   playerLevel: number,
-  status: PetStatus = 'normal',
 ): number {
-  const maxHp = getMaxHp(pet);
-  const hpRatio = maxHp > 0 ? pet.currentHp / maxHp : 1;
+  const hpRatio = target.maxHp > 0 ? target.hp / target.maxHp : 1;
   const hpFactor = 1 - hpRatio * 0.7;
 
-  const rarity = getShape(pet.shapeId).rarity;
-  const rarityFactor = RARITY_FACTOR[rarity] ?? 1.0;
-
-  const levelFactor = Math.min(1.5, Math.max(0.5, playerLevel / Math.max(1, pet.level))) * 0.1 + 0.9;
+  const rarityFactor = RARITY_FACTOR[getShape(target.shapeId).rarity] ?? 1.0;
+  const statusFactor = target.status ? STATUS_MULTIPLIER[target.status] : 1.0;
+  const levelFactor =
+    Math.min(1.5, Math.max(0.5, playerLevel / Math.max(1, target.level))) * 0.1 + 0.9;
 
   const rate =
-    BASE_CAPTURE_RATE * hpFactor * rarityFactor * pokeball.multiplier * STATUS_MULTIPLIER[status] * levelFactor;
+    BASE_CAPTURE_RATE * hpFactor * rarityFactor * pokeball.multiplier * statusFactor * levelFactor;
 
   return Math.max(0.02, Math.min(1, rate));
 }
 
 export function attemptCapture(
-  pet: PetInstance,
+  target: CaptureTarget,
   pokeball: Pokeball,
   playerLevel: number,
-  status: PetStatus = 'normal',
 ): { success: boolean; rate: number } {
-  const rate = calculateCaptureRate(pet, pokeball, playerLevel, status);
+  const rate = calculateCaptureRate(target, pokeball, playerLevel);
   return { success: Math.random() < rate, rate };
 }

@@ -1,7 +1,7 @@
-import type { PetInstance } from '../lib/gameTypes';
+import { dominantElement, type PetInstance } from '../lib/gameTypes';
 import { getShape } from '../lib/petData';
 import { getMaxHp, growthTierLabel } from '../lib/petUtils';
-import { ElementBadge } from './ElementBadge';
+import { ElementPointsBadge } from './ElementBadge';
 import { PetSprite } from './PetSprite';
 
 function growthTierClass(avg: number, isLegendary: boolean): string {
@@ -41,7 +41,11 @@ export function PetCard({
             pet.currentHp <= 0 ? 'opacity-30 grayscale' : ''
           }`}
         >
-          <PetSprite shapeId={pet.shapeId} element={pet.elementPrimary} size={compact ? 44 : 56} />
+          <PetSprite
+            shapeId={pet.shapeId}
+            element={dominantElement(pet.elementPoints)}
+            size={compact ? 44 : 56}
+          />
         </div>
 
         <div className="min-w-0 flex-1">
@@ -54,8 +58,7 @@ export function PetCard({
           </div>
 
           <div className="flex items-center gap-1 mt-1.5">
-            <ElementBadge element={pet.elementPrimary} small />
-            {pet.elementSecondary && <ElementBadge element={pet.elementSecondary} small />}
+            <ElementPointsBadge points={pet.elementPoints} small />
             <span
               className={`text-[10px] ml-auto font-semibold ${growthTierClass(pet.averageGrowthRate, pet.isLegendary)}`}
             >
@@ -82,7 +85,7 @@ export function PetCard({
 
           {!compact && (
             <div className="mt-2 text-[10px] text-slate-400">
-              {pet.nature} · {pet.personality}
+              {shape.name} · {pet.nature} · {pet.personality}
             </div>
           )}
         </div>
