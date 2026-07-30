@@ -9,6 +9,7 @@ import PetManagement from './pages/PetManagement';
 import Pokedex from './pages/Pokedex';
 import PvP from './pages/PvP';
 import Settings from './pages/Settings';
+import ArtLab from './pages/ArtLab';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
               <Route path="/pokedex" component={Pokedex} />
               <Route path="/pvp" component={PvP} />
               <Route path="/settings" component={Settings} />
+              <Route path="/artlab" component={ArtLab} />
               <Route>
                 <div className="p-8 text-center text-slate-400">페이지를 찾을 수 없습니다.</div>
               </Route>
