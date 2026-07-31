@@ -67,6 +67,18 @@ export interface PetBody {
   fins?: boolean;
   /** 긴 코 (매머드) */
   trunk?: boolean;
+  /** 각룡류 목 프릴 (트리케라톱스) */
+  frill?: boolean;
+  /** 등 돛 (스피노사우루스·돛지느러미 도마뱀) */
+  sail?: boolean;
+  /** 길게 뻗은 혀 */
+  tongue?: boolean;
+  /** 여러 갈래 꼬리 (구름여우) */
+  tails?: number;
+  /** 수염 (동양룡) */
+  whiskers?: boolean;
+  /** 앞발에 든 구슬 (여의주) */
+  orb?: boolean;
 
   /*
    * ── 격(格)을 만드는 부위 ──
@@ -776,6 +788,123 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
     }
   };
 
+  /** 각룡류 프릴 — 머리 뒤에 세우는 방패. 트리케라톱스의 정체성이다. */
+  const addFrill = (hx: number, hy: number, r: number) => {
+    if (!body.frill) return;
+    const disc = add(new THREE.CylinderGeometry(r * 1.55, r * 1.45, r * 0.16, 18), z.belly, [
+      hx - r * 0.75, hy + r * 0.42, 0,
+    ], [0, 0, Math.PI / 2 - 0.35]);
+    disc.scale.set(1, 1, 0.9);
+    // 가장자리 가시
+    for (let i = 0; i < 9; i++) {
+      const a = -1.15 + (i / 8) * 2.3;
+      add(cone(r * 0.13, r * 0.4, 6), z.elem, [
+        hx - r * 0.75 + Math.sin(a) * 0.1,
+        hy + r * 0.42 + Math.cos(a) * r * 1.5,
+        Math.sin(a) * r * 1.45,
+      ], [a * 0.8, 0, -0.35]);
+    }
+  };
+
+  /** 등 돛 — 척추를 따라 세우는 큰 막. 실루엣을 통째로 바꾼다. */
+  const addSail = (get: (t: number) => THREE.Vector3, rad: (t: number) => number) => {
+    if (!body.sail) return;
+    const N = 16;
+    const pts: THREE.Vector3[] = [];
+    for (let i = 0; i <= N; i++) {
+      const t = 0.15 + (i / N) * 0.68;
+      const p = get(t);
+      const h = rad(t) * (0.6 + Math.sin((i / N) * Math.PI) * 2.4);
+      pts.push(new THREE.Vector3(p.x, p.y + rad(t) * 0.85 + h, 0));
+      // 지지 가시
+      if (i % 2 === 0) {
+        add(capsule(rad(t) * 0.06, h * 0.9), z.paw, [p.x, p.y + rad(t) * 0.85 + h * 0.5, 0]);
+      }
+    }
+    // 막 — 위 능선과 등을 잇는 판
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0);
+    for (let i = 0; i <= N; i++) {
+      const t = 0.15 + (i / N) * 0.68;
+      const p = get(t);
+      shape.lineTo(p.x - get(0.15).x, pts[i].y - get(0.15).y);
+    }
+    for (let i = N; i >= 0; i--) {
+      const t = 0.15 + (i / N) * 0.68;
+      const p = get(t);
+      shape.lineTo(p.x - get(0.15).x, p.y + rad(t) * 0.8 - get(0.15).y);
+    }
+    const mem = new THREE.Mesh(new THREE.ShapeGeometry(shape, 12), new THREE.MeshStandardMaterial({
+      color: new THREE.Color(pal.sub), roughness: 0.6, side: THREE.DoubleSide,
+    }));
+    mem.position.set(get(0.15).x, get(0.15).y, 0);
+    mem.castShadow = true;
+    g.add(mem);
+  };
+
+  /** 길게 뻗은 혀 */
+  const addTongue = (mx: number, my: number, size: number) => {
+    if (!body.tongue) return;
+    const mat = new THREE.MeshStandardMaterial({ color: 0xe0567a, roughness: 0.45 });
+    for (let i = 0; i <= 9; i++) {
+      const t = i / 9;
+      const seg = add(sphere(size * (0.3 - t * 0.12), 12), mat, [
+        mx + size * (0.4 + t * 2.0),
+        my - Math.sin(t * 1.9) * size * 0.5,
+        0,
+      ]);
+      seg.scale.set(1, 0.72, 0.9);
+    }
+  };
+
+  /** 여러 갈래 꼬리 */
+  const addTails = (bx: number, by: number, len: number, r: number) => {
+    if (!body.tails) return;
+    for (let k = 0; k < body.tails; k++) {
+      const spread = (k - (body.tails - 1) / 2) * 0.42;
+      const pts: THREE.Vector3[] = [];
+      const rs: number[] = [];
+      for (let i = 0; i <= 10; i++) {
+        const t = i / 10;
+        rs.push(r * (0.7 - t * 0.42) * (i === 10 ? 0.3 : 1));
+        pts.push(new THREE.Vector3(
+          bx - len * t,
+          by + Math.sin(t * 2.1) * len * 0.34,
+          Math.sin(spread) * len * t * 0.6,
+        ));
+      }
+      add(loft(pts, rs, { wide: 1, tall: 1.05, sides: 10 }), k % 2 ? z.belly : z.base, [0, 0, 0]);
+    }
+  };
+
+  /** 동양룡 수염 */
+  const addWhiskers = (hx: number, hy: number, size: number) => {
+    if (!body.whiskers) return;
+    for (const side of [-1, 1]) {
+      const pts: THREE.Vector3[] = [];
+      const rs: number[] = [];
+      for (let i = 0; i <= 10; i++) {
+        const t = i / 10;
+        rs.push(size * 0.075 * (1 - t * 0.7));
+        pts.push(new THREE.Vector3(
+          hx + size * (0.5 + t * 1.9),
+          hy + Math.sin(t * 2.6) * size * 0.55,
+          side * size * (0.25 + t * 0.35),
+        ));
+      }
+      add(loft(pts, rs, { sides: 8 }), z.belly, [0, 0, 0]);
+    }
+  };
+
+  /** 여의주 */
+  const addOrb = (ox: number, oy: number, oz: number, r: number) => {
+    if (!body.orb) return;
+    const orb = add(sphere(r, 20), new THREE.MeshStandardMaterial({
+      color: 0xffd34a, emissive: new THREE.Color(0xffb020), emissiveIntensity: 0.9, roughness: 0.2, metalness: 0.4,
+    }), [ox, oy, oz]);
+    orb.castShadow = false;
+  };
+
   /** 긴 코 — 매머드는 코가 없으면 매머드로 안 읽힌다 */
   const addTrunk = (cx: number, cy: number, size: number) => {
     if (!body.trunk) return;
@@ -1217,6 +1346,11 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
     }
 
     addSurface(at, radiusOn);
+    addSail(at, radiusOn);
+    addFrill(headX, headY, headR);
+    addTongue(noseX, noseY - headR * 0.2, headR);
+    addTails(tailBase.x, tailBase.y, 0.7 * pl, hipR);
+    addWhiskers(noseX, noseY, headR);
     addCrest(headX - headR * 0.3, headY + headR * 0.3, headR * 1.15, 0.5 * pl);
     addPlates(at, radiusOn);
     addFins(at(0.45).x, at(0.45).y - radiusOn(0.45) * 0.3, radiusOn(0.45) * 1.1);
@@ -1377,6 +1511,11 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
     }
     addHorns(headX, headY, headR * 3.2);
     addSurface((t) => spinePt(t), (t) => torsoR(t), 0.12, 0.9);
+    addSail((t) => spinePt(t), (t) => torsoR(t));
+    addFrill(headX, headY, headR);
+    addTongue(noseX, noseY - headR * 0.2, headR);
+    addWhiskers(noseX, noseY, headR);
+    addOrb(spinePt(0.7).x + bs * 0.9, spinePt(0.7).y - bs * 1.0, bs * 1.2, bs * 0.5);
     addCrest(headX - headR * 0.5, headY + headR * 0.34, headR * 1.2, 0.5 * ph);
     addPlates((t) => spinePt(t), (t) => torsoR(t));
     addCrown(headX, headY, headR);
@@ -1855,53 +1994,100 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
 
 /** 종별 체형 정의 — 42종 전부. 빠지면 조용히 1번 체형으로 떨어져 전부 같아 보인다. */
 export const PET_BODIES: Record<number, PetBody> = {
+  /*
+   * 제시받은 프롬프트의 생물들로 42종을 다시 짰다. 밸런스(스탯·스킬·
+   * 레벨·진화)는 검증이 끝난 자산이라 슬롯을 유지하고, 이름과 디자인만
+   * 교체한다. 각 줄 주석이 대응하는 프롬프트다.
+   */
   // ─── 푸른 초원 ───
-  1: { kind: 'quadruped', archetype: 'lagomorph', surface: 'fur', proportions: [0.82, 1.0, 1.0], legs: 0.8, ears: 'long', tail: 'puff', snout: 0.1, build: 'sturdy', presence: 0.9 },
-  2: { kind: 'quadruped', archetype: 'canine', earScale: 1.25, surface: 'fur', proportions: [1.05, 0.98, 0.86], legs: 1.05, ears: 'pointed', tail: 'bushy', snout: 0.95, build: 'slim' },
-  3: { kind: 'blob', surface: 'slime', proportions: [1, 1, 1], presence: 0.9 },
-  4: { kind: 'shelled', surface: 'scale', proportions: [1, 1, 1], fins: true },
-  5: { kind: 'bird', surface: 'feather', proportions: [1, 1, 0.85], head: 1.05, presence: 0.9 },
-  6: { kind: 'blob', surface: 'slime', proportions: [0.8, 0.72, 0.72], glow: true, horns: 'spike', presence: 0.86 },
-  7: { kind: 'quadruped', archetype: 'ursine', surface: 'fur', proportions: [0.9, 0.86, 1.05], legs: 0.45, ears: 'round', tail: 'puff', snout: 0.8, build: 'sturdy' },
-  8: { kind: 'quadruped', archetype: 'feline', surface: 'fur', proportions: [1.0, 0.95, 0.82], legs: 1.1, ears: 'pointed', tail: 'thin', snout: 0.35, build: 'slim' },
-  9: { kind: 'biped', surface: 'scale', proportions: [1.0, 0.98, 0.92], snout: 0.7, spikes: true, fangs: true, crest: 'flame', glow: true },
-  10: { kind: 'bird', surface: 'feather', proportions: [1.05, 1.05, 0.92], head: 0.95, wings: 'feather' },
-  11: { kind: 'quadruped', archetype: 'caprine', surface: 'fur', proportions: [1.0, 1.05, 0.8], legs: 1.45, ears: 'pointed', tail: 'puff', snout: 0.6, horns: 'crystal', build: 'slim' },
-  12: { kind: 'quadruped', archetype: 'canine', surface: 'fur', proportions: [1.14, 1.08, 1.02], legs: 1.24, ears: 'pointed', tail: 'bushy', snout: 0.8, mane: true, build: 'sturdy', fangs: true, crest: 'feather', presence: 1.06 },
-  13: { kind: 'bird', surface: 'feather', proportions: [0.95, 1.05, 1.1], head: 1.25, ears: 'pointed', glow: true, wings: 'feather', crest: 'feather', presence: 1.08 },
-  14: { kind: 'shelled', surface: 'rock', proportions: [1.25, 1.25, 1.34], horns: 'spike', armor: true, aura: true, crown: true, fieryEyes: true, presence: 1.22 },
-  15: { kind: 'quadruped', archetype: 'lagomorph', surface: 'fur', proportions: [0.88, 1.0, 0.9], legs: 1.15, ears: 'long', tail: 'puff', snout: 0.15, build: 'slim' },
-  16: { kind: 'quadruped', archetype: 'canine', earScale: 1.2, surface: 'fur', proportions: [1.08, 1.02, 0.92], legs: 1.08, ears: 'pointed', tail: 'bushy', snout: 0.95, build: 'slim', fangs: true, glow: true, crest: 'flame', presence: 1.04 },
-  17: { kind: 'blob', surface: 'slime', proportions: [1.05, 1.1, 1.05], glow: true },
-  18: { kind: 'shelled', surface: 'rock', proportions: [1.06, 1.06, 1.14], horns: 'spike', armor: true, presence: 1.08 },
-  19: { kind: 'bird', surface: 'feather', proportions: [1.1, 0.92, 0.8], head: 0.9 },
-  20: { kind: 'bird', surface: 'feather', proportions: [0.85, 0.85, 1.15], head: 0.95, glow: true },
-  21: { kind: 'quadruped', archetype: 'ursine', surface: 'rock', proportions: [0.95, 0.9, 1.1], legs: 0.5, ears: 'round', tail: 'puff', snout: 0.75, build: 'sturdy' },
+  // "small cute white rabbit with red eyes, wears a small gold crown"
+  1: { kind: 'quadruped', archetype: 'lagomorph', surface: 'fur', proportions: [0.82, 1.0, 1.0], legs: 0.8, ears: 'long', tail: 'puff', snout: 0.1, build: 'sturdy', crown: true, presence: 0.9 },
+  // "silver cloud fox, red eyes, white belly, multiple cloud tails"
+  2: { kind: 'quadruped', archetype: 'canine', earScale: 1.25, surface: 'fur', proportions: [1.05, 0.98, 0.86], legs: 1.05, ears: 'pointed', tail: 'none', tails: 5, snout: 0.95, build: 'slim' },
+  // "bipedal blue dinosaur with a vibrant orange spiky mohawk crest, snarling"
+  3: { kind: 'biped', surface: 'scale', proportions: [0.95, 1.0, 0.9], snout: 0.6, fangs: true, crest: 'flame', spikes: true, presence: 0.95 },
+  // "turtle-like beast, cream shell with large white conical spikes"
+  4: { kind: 'shelled', surface: 'scale', proportions: [1, 1, 1], horns: 'spike', armor: true },
+  // "bipedal winged harpy chick, pink feathered body, cream wings"
+  5: { kind: 'bird', surface: 'feather', proportions: [1, 1, 0.85], head: 1.05, wings: 'feather', horns: 'spike', presence: 0.9 },
+  // "Holstein cow, black and white patches, small yellow horns, surprised eyes"
+  6: { kind: 'quadruped', archetype: 'ursine', surface: 'fur', proportions: [1.0, 0.95, 1.0], legs: 1.0, ears: 'round', tail: 'thin', snout: 0.7, horns: 'curved', pattern: 'spots', presence: 0.92 },
+  // "yellow quadruped, elephant-tapir hybrid, large ears and short trunk"
+  7: { kind: 'quadruped', archetype: 'ursine', surface: 'fur', proportions: [0.95, 0.9, 1.08], legs: 0.6, ears: 'round', tail: 'puff', snout: 0.5, trunk: true, pattern: 'spots', build: 'sturdy' },
+  // "small playful white tiger with black stripes, large fluffy mane"
+  8: { kind: 'quadruped', archetype: 'feline', surface: 'fur', proportions: [1.0, 0.95, 0.86], legs: 1.05, ears: 'round', tail: 'thin', snout: 0.35, pattern: 'stripes', mane: true, fangs: true },
+  // "orange bipedal dinosaur, yellow leaf-like plates along the back"
+  9: { kind: 'biped', surface: 'scale', proportions: [1.0, 0.98, 0.92], snout: 0.7, plates: true, fangs: true, crest: 'flame' },
+  // "grey winged pegasus-bat, feathered wings, tendril tail"
+  10: { kind: 'bird', surface: 'feather', proportions: [1.05, 1.05, 0.92], head: 0.95, wings: 'membrane' },
+  // "winged deer, light pink body with blue spots, large white ears"
+  11: { kind: 'quadruped', archetype: 'caprine', surface: 'fur', proportions: [1.0, 1.05, 0.8], legs: 1.45, ears: 'round', tail: 'puff', snout: 0.6, pattern: 'spots', wings: 'feather', build: 'slim' },
+  // "snarling werewolf, hunched powerful pose, grey-black fur, long whiskers"
+  12: { kind: 'biped', surface: 'fur', proportions: [1.0, 1.05, 1.05], head: 0.95, snout: 0.7, fangs: true, mane: true, spikes: true, presence: 1.05 },
+  // "penguin-phoenix hybrid, blue upper body, flame plumage crest and tail"
+  13: { kind: 'bird', surface: 'feather', proportions: [0.95, 1.05, 1.1], head: 1.2, glow: true, crest: 'flame', fangs: true, presence: 1.08 },
+  // "Xuanwu, turtle-snake hybrid, teal segmented shell, long snake neck"
+  14: { kind: 'shelled', surface: 'scale', proportions: [1.25, 1.25, 1.34], horns: 'spike', armor: true, fangs: true, aura: true, fieryEyes: true, presence: 1.22 },
+  // "tan goat-like creature, long curved horns, white beard, cloven hooves"
+  15: { kind: 'quadruped', archetype: 'caprine', surface: 'fur', proportions: [0.95, 1.0, 0.92], legs: 1.15, ears: 'pointed', tail: 'puff', snout: 0.55, horns: 'curved' },
+  // "red raptor dinosaur, orange feather crest, yellow snout, feathered claws"
+  16: { kind: 'biped', surface: 'feather', proportions: [1.02, 1.0, 0.85], snout: 0.85, crest: 'feather', fangs: true, spikes: true, presence: 1.02 },
+  // "blue swordfish creature, long nose, dorsal fin, yellow lateral stripes"
+  17: { kind: 'serpent', surface: 'scale', proportions: [1.05, 1.05, 1.0], crest: 'fin', fins: true, pattern: 'stripes' },
+  // "bulky green turtle, heavy dark grey shell, ivory curved horns, fangs"
+  18: { kind: 'shelled', surface: 'rock', proportions: [1.06, 1.06, 1.14], horns: 'curved', armor: true, fangs: true, presence: 1.08 },
+  // "light blue wyvern with wings and claws"
+  19: { kind: 'bird', surface: 'scale', proportions: [1.1, 0.95, 0.85], head: 0.9, wings: 'membrane', fangs: true, horns: 'spike' },
+  // "green theropod with vibrant yellow-gold stripe pattern, snarling"
+  20: { kind: 'biped', surface: 'scale', proportions: [0.95, 0.92, 0.85], snout: 0.75, pattern: 'stripes', fangs: true },
+  // "brown grizzly bear, yellow muzzle, black claws"
+  21: { kind: 'quadruped', archetype: 'ursine', surface: 'fur', proportions: [1.0, 0.95, 1.1], legs: 0.85, ears: 'round', tail: 'puff', snout: 0.75, fangs: true, build: 'sturdy' },
   // ─── 울창한 숲 ───
-  22: { kind: 'serpent', surface: 'scale', proportions: [1, 1, 1], crest: 'fin' },
-  23: { kind: 'blob', surface: 'slime', proportions: [1.1, 0.75, 1.15], cap: true },
-  24: { kind: 'quadruped', archetype: 'reptile', surface: 'scale', proportions: [1.32, 0.8, 0.98], legs: 0.42, ears: 'none', tail: 'lizard', snout: 1.0, build: 'sturdy', fangs: true, plates: true, presence: 1.06 },
-  25: { kind: 'quadruped', archetype: 'feline', surface: 'fur', proportions: [1.16, 1.02, 0.86], legs: 1.28, ears: 'round', tail: 'thin', snout: 0.5, pattern: 'stripes', build: 'slim', fangs: true, presence: 1.02 },
-  26: { kind: 'golem', surface: 'rock', proportions: [1.05, 1.2, 1.02], horns: 'antler', glow: true, aura: true, fieryEyes: true, presence: 1.1 },
-  27: { kind: 'biped', surface: 'rock', proportions: [1.2, 1.24, 1.26], head: 0.98, snout: 0.4, horns: 'antler', armor: true, aura: true, fangs: true, fieryEyes: true, crest: 'feather', presence: 1.26 },
+  // "llama with green fur, neck of stacked scallions, leek crest"
+  22: { kind: 'quadruped', archetype: 'caprine', surface: 'fur', proportions: [0.95, 1.15, 0.85], legs: 1.3, ears: 'long', tail: 'puff', snout: 0.4, crest: 'feather', build: 'slim' },
+  // "crouched blue quadruped, massive pink tongue extended, armor shell"
+  23: { kind: 'quadruped', archetype: 'reptile', surface: 'scale', proportions: [1.05, 0.8, 1.05], legs: 0.45, ears: 'none', tail: 'lizard', snout: 0.55, tongue: true, plates: true, build: 'sturdy' },
+  // "red sailfin crocodile dinosaur, large red sail, bared teeth"
+  24: { kind: 'quadruped', archetype: 'reptile', surface: 'scale', proportions: [1.32, 0.8, 0.98], legs: 0.42, ears: 'none', tail: 'lizard', snout: 1.0, sail: true, fangs: true, presence: 1.06 },
+  // "adorable cheetah, yellow with dark brown spots, sitting"
+  25: { kind: 'quadruped', archetype: 'feline', surface: 'fur', proportions: [1.16, 1.02, 0.86], legs: 1.28, ears: 'round', tail: 'thin', snout: 0.5, pattern: 'spots', build: 'slim', fangs: true },
+  // "bulky ape-yeti covered in vibrant green fur, large curved gold horns"
+  26: { kind: 'biped', surface: 'fur', proportions: [1.1, 1.15, 1.2], head: 1.0, snout: 0.35, horns: 'curved', fangs: true, mane: true, presence: 1.12 },
+  // "quadrupedal triceratops, three white horns, large yellow frill"
+  27: { kind: 'quadruped', archetype: 'ursine', surface: 'scale', proportions: [1.3, 1.15, 1.3], legs: 0.95, ears: 'none', tail: 'lizard', snout: 0.75, horns: 'spike', frill: true, fangs: true, presence: 1.24 },
   // ─── 험준한 산맥 ───
-  28: { kind: 'quadruped', archetype: 'caprine', surface: 'fur', proportions: [0.95, 1.0, 0.95], legs: 1.15, ears: 'pointed', tail: 'puff', snout: 0.55, horns: 'curved', build: 'sturdy' },
-  29: { kind: 'shelled', surface: 'rock', proportions: [1.05, 0.85, 1.15], horns: 'spike' },
-  30: { kind: 'bird', surface: 'feather', proportions: [1.18, 1.14, 1.08], head: 1.0, wings: 'feather', crest: 'feather', fangs: true, presence: 1.08 },
-  31: { kind: 'biped', surface: 'fur', proportions: [1.05, 1.16, 1.25], head: 1.05, snout: 0.25, fangs: true, presence: 1.14 },
-  32: { kind: 'biped', surface: 'rock', proportions: [1.25, 1.28, 1.3], head: 1.0, snout: 0.55, horns: 'curved', spikes: true, armor: true, aura: true, crown: true, fangs: true, fieryEyes: true, presence: 1.28 },
+  // "horned stag-goat hybrid, orange scaled body, asymmetric curved horns"
+  28: { kind: 'quadruped', archetype: 'caprine', surface: 'scale', proportions: [1.0, 1.05, 0.95], legs: 1.2, ears: 'pointed', tail: 'thin', snout: 0.6, horns: 'antler', pattern: 'spots', presence: 1.04 },
+  // "crouched quadruped with massive shell of pale blue ice plates, white spikes"
+  29: { kind: 'shelled', surface: 'rock', proportions: [1.1, 0.9, 1.2], horns: 'spike', armor: true, glow: true, presence: 1.06 },
+  // "dark nightmare pegasus, feathered dark wings, curved horn, glowing red eyes"
+  30: { kind: 'quadruped', archetype: 'caprine', surface: 'fur', proportions: [1.1, 1.15, 0.95], legs: 1.4, ears: 'pointed', tail: 'thin', snout: 0.7, horns: 'curved', wings: 'feather', mane: true, fieryEyes: true, presence: 1.12 },
+  // "bipedal beast with vibrant yellow fur, white chest, prominent white claws"
+  31: { kind: 'biped', surface: 'fur', proportions: [1.05, 1.16, 1.25], head: 1.05, snout: 0.3, fangs: true, mane: true, presence: 1.14 },
+  // "white tiger with black stripes, large mane and flowing tail fur"
+  32: { kind: 'quadruped', archetype: 'feline', surface: 'fur', proportions: [1.35, 1.2, 1.05], legs: 1.25, ears: 'round', tail: 'bushy', snout: 0.5, pattern: 'stripes', mane: true, fangs: true, aura: true, fieryEyes: true, presence: 1.26 },
   // ─── 불타는 화산 ───
-  33: { kind: 'shelled', surface: 'slime', proportions: [0.92, 0.92, 0.98], glow: true, horns: 'spike' },
-  34: { kind: 'bird', surface: 'feather', proportions: [1.02, 1.02, 0.9], head: 0.95, wings: 'feather' },
-  35: { kind: 'golem', surface: 'rock', proportions: [1.1, 1.05, 1.15], glow: true, fieryEyes: true, armor: true, presence: 1.12 },
+  // "spiky boar, deep red body, large conical blue spikes, small tusks"
+  33: { kind: 'quadruped', archetype: 'ursine', surface: 'fur', proportions: [1.05, 0.95, 1.15], legs: 0.8, ears: 'round', tail: 'puff', snout: 0.7, horns: 'tusk', spikes: true, build: 'sturdy' },
+  // "slender bipedal grey dinosaur, black collar mane, jagged star-like crest"
+  34: { kind: 'biped', surface: 'scale', proportions: [0.92, 1.0, 0.8], head: 0.95, snout: 0.6, mane: true, crown: true, presence: 1.0 },
+  // "winged dragon, orange-red scales with dark red spots, yellow eyes"
+  35: { kind: 'quadruped', archetype: 'reptile', surface: 'scale', proportions: [1.2, 1.05, 1.05], legs: 0.9, ears: 'none', tail: 'lizard', snout: 0.8, wings: 'membrane', pattern: 'spots', spikes: true, fangs: true, fieryEyes: true, presence: 1.14 },
+  // "majestic phoenix in full flight, fiery red-orange-yellow plumage"
   36: { kind: 'bird', surface: 'feather', proportions: [1.05, 0.98, 1.0], head: 1.15, glow: true, wings: 'feather', aura: true, fieryEyes: true, crest: 'flame', presence: 1.14 },
-  37: { kind: 'biped', surface: 'rock', proportions: [1.3, 1.3, 1.32], head: 1.0, snout: 0.8, horns: 'spike', spikes: true, glow: true, wings: 'membrane', armor: true, aura: true, fangs: true, fieryEyes: true, crest: 'flame', presence: 1.3 },
+  // "Eastern dragon standing, orange-red scales, long yellow tendrils, golden orb"
+  37: { kind: 'biped', surface: 'scale', proportions: [1.3, 1.3, 1.32], head: 1.0, snout: 0.9, horns: 'antler', whiskers: true, orb: true, spikes: true, glow: true, aura: true, fangs: true, fieryEyes: true, crest: 'flame', presence: 1.3 },
   // ─── 신비한 빙산 ───
-  38: { kind: 'quadruped', archetype: 'canine', earScale: 1.3, surface: 'fur', proportions: [1.0, 0.95, 0.9], legs: 1.05, ears: 'pointed', tail: 'bushy', snout: 0.9, build: 'slim' },
+  // "shaggy polar bear with cream-white fur, walking forward"
+  38: { kind: 'quadruped', archetype: 'ursine', surface: 'fur', proportions: [1.05, 1.0, 1.12], legs: 0.9, ears: 'round', tail: 'puff', snout: 0.7, fangs: true },
+  // "shaggy blue mammoth, large white tusks, dark blue wig-like head fur"
   39: { kind: 'quadruped', archetype: 'ursine', surface: 'fur', proportions: [1.28, 1.24, 1.34], legs: 1.24, ears: 'round', tail: 'thin', snout: 0.6, horns: 'tusk', trunk: true, mane: true, build: 'sturdy', presence: 1.12 },
-  40: { kind: 'golem', surface: 'slime', proportions: [0.92, 1.0, 0.88], glow: true, horns: 'crystal', fieryEyes: true },
-  41: { kind: 'serpent', surface: 'scale', proportions: [1.3, 1.25, 1.25], spikes: true, horns: 'spike', fins: true, crest: 'fin', fangs: true, fieryEyes: true, presence: 1.16 },
-  42: { kind: 'bird', surface: 'feather', proportions: [1.1, 1.05, 1.1], head: 1.15, glow: true, wings: 'feather', crown: true, aura: true, fieryEyes: true, crest: 'fin', presence: 1.24 },
+  // "bipedal cybernetic dragon, white mechanical parts with glowing blue lines"
+  40: { kind: 'biped', surface: 'rock', proportions: [1.05, 1.1, 1.0], head: 0.95, snout: 0.7, wings: 'membrane', armor: true, glow: true, fieryEyes: true, spikes: true, presence: 1.1 },
+  // "ice dragon, light blue scales with white fur, wings of ice formations"
+  41: { kind: 'quadruped', archetype: 'reptile', surface: 'scale', proportions: [1.25, 1.15, 1.15], legs: 0.95, ears: 'none', tail: 'lizard', snout: 0.85, wings: 'membrane', horns: 'crystal', spikes: true, fangs: true, glow: true, fieryEyes: true, presence: 1.16 },
+  // "light blue Eastern dragon, flowing white mane and whiskers, golden antlers, orb"
+  42: { kind: 'serpent', surface: 'scale', proportions: [1.2, 1.15, 1.1], horns: 'antler', whiskers: true, crest: 'fin', fins: true, fangs: true, aura: true, fieryEyes: true, presence: 1.24 },
 };
 
 /*

@@ -61,7 +61,7 @@ export const PET_SHAPES: PetShape[] = [
   // ─────────── 푸른 초원 · 기본형 ───────────
   {
     id: 1,
-    name: '솜털토끼',
+    name: '왕관토끼',
     elementBias: ['wind'],
     rarity: 'common',
     baseStat: { STR: 7, AGI: 9, VIT: 7, SPA: 5, SPD: 5, LCK: 6 },
@@ -76,7 +76,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 2,
-    name: '불꽃여우',
+    name: '구름여우',
     elementBias: ['fire'],
     rarity: 'common',
     baseStat: { STR: 8, AGI: 8, VIT: 7, SPA: 9, SPD: 5, LCK: 5 },
@@ -91,7 +91,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 3,
-    name: '물방울슬라임',
+    name: '푸른뿔공룡',
     elementBias: ['water'],
     rarity: 'common',
     baseStat: { STR: 6, AGI: 5, VIT: 8, SPA: 8, SPD: 6, LCK: 5 },
@@ -106,7 +106,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 4,
-    name: '이끼거북',
+    name: '가시등거북',
     elementBias: ['earth', 'water'],
     rarity: 'common',
     baseStat: { STR: 7, AGI: 3, VIT: 11, SPA: 5, SPD: 6, LCK: 4 },
@@ -121,7 +121,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 5,
-    name: '바람참새',
+    name: '분홍하피',
     elementBias: ['wind'],
     rarity: 'common',
     baseStat: { STR: 5, AGI: 10, VIT: 5, SPA: 6, SPD: 6, LCK: 5 },
@@ -136,7 +136,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 6,
-    name: '반딧불이',
+    name: '얼룩젖소',
     elementBias: ['fire', 'wind'],
     rarity: 'common',
     baseStat: { STR: 4, AGI: 8, VIT: 5, SPA: 9, SPD: 5, LCK: 7 },
@@ -151,7 +151,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 7,
-    name: '조약돌두더지',
+    name: '노란테이퍼',
     elementBias: ['earth'],
     rarity: 'common',
     baseStat: { STR: 9, AGI: 4, VIT: 9, SPA: 4, SPD: 5, LCK: 4 },
@@ -168,7 +168,7 @@ export const PET_SHAPES: PetShape[] = [
   // ─────────── 푸른 초원 · 상위 등급 ───────────
   {
     id: 8,
-    name: '안개고양이',
+    name: '백호새끼',
     elementBias: ['water'],
     rarity: 'uncommon',
     baseStat: { STR: 7, AGI: 9, VIT: 6, SPA: 7, SPD: 6, LCK: 7 },
@@ -182,7 +182,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 9,
-    name: '화산도마뱀',
+    name: '잎날개공룡',
     elementBias: ['fire', 'earth'],
     rarity: 'uncommon',
     baseStat: { STR: 9, AGI: 5, VIT: 8, SPA: 8, SPD: 5, LCK: 4 },
@@ -196,7 +196,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 10,
-    name: '폭풍매',
+    name: '잿빛박쥐말',
     elementBias: ['wind', 'water'],
     rarity: 'uncommon',
     baseStat: { STR: 8, AGI: 10, VIT: 5, SPA: 7, SPD: 5, LCK: 6 },
@@ -210,7 +210,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 11,
-    name: '크리스탈사슴',
+    name: '분홍점사슴',
     elementBias: ['earth'],
     rarity: 'uncommon',
     baseStat: { STR: 6, AGI: 7, VIT: 8, SPA: 8, SPD: 8, LCK: 6 },
@@ -224,7 +224,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 12,
-    name: '그림자늑대',
+    name: '늑대인간',
     elementBias: ['wind', 'fire'],
     rarity: 'uncommon',
     baseStat: { STR: 10, AGI: 9, VIT: 6, SPA: 5, SPD: 5, LCK: 6 },
@@ -238,7 +238,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 13,
-    name: '빛나는부엉이',
+    name: '불꽃펭귄',
     elementBias: ['wind'],
     rarity: 'rare',
     baseStat: { STR: 6, AGI: 8, VIT: 6, SPA: 11, SPD: 9, LCK: 7 },
@@ -252,7 +252,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 14,
-    name: '태초의거북',
+    name: '현무',
     elementBias: ['earth', 'water'],
     rarity: 'boss',
     baseStat: { STR: 12, AGI: 6, VIT: 16, SPA: 10, SPD: 10, LCK: 8 },
@@ -268,7 +268,7 @@ export const PET_SHAPES: PetShape[] = [
   // ─────────── 진화형 ───────────
   {
     id: 15,
-    name: '질풍토끼',
+    name: '황갈뿔염소',
     elementBias: ['wind'],
     rarity: 'uncommon',
     baseStat: { STR: 11, AGI: 14, VIT: 10, SPA: 7, SPD: 8, LCK: 8 },
@@ -282,7 +282,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 16,
-    name: '홍염여우',
+    name: '붉은랩터',
     elementBias: ['fire'],
     rarity: 'uncommon',
     baseStat: { STR: 12, AGI: 12, VIT: 10, SPA: 14, SPD: 8, LCK: 7 },
@@ -296,7 +296,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 17,
-    name: '해류슬라임',
+    name: '검치새치',
     elementBias: ['water'],
     rarity: 'uncommon',
     baseStat: { STR: 9, AGI: 8, VIT: 13, SPA: 13, SPD: 10, LCK: 7 },
@@ -310,7 +310,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 18,
-    name: '바위거북',
+    name: '뿔등거북',
     elementBias: ['earth', 'water'],
     rarity: 'rare',
     baseStat: { STR: 12, AGI: 5, VIT: 17, SPA: 8, SPD: 11, LCK: 6 },
@@ -324,7 +324,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 19,
-    name: '창공제비',
+    name: '하늘비룡',
     elementBias: ['wind'],
     rarity: 'uncommon',
     baseStat: { STR: 9, AGI: 15, VIT: 8, SPA: 10, SPD: 9, LCK: 8 },
@@ -338,7 +338,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 20,
-    name: '불나방',
+    name: '금줄공룡',
     elementBias: ['fire', 'wind'],
     rarity: 'uncommon',
     baseStat: { STR: 7, AGI: 12, VIT: 8, SPA: 14, SPD: 8, LCK: 10 },
@@ -352,7 +352,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 21,
-    name: '바위두더지',
+    name: '갈색불곰',
     elementBias: ['earth'],
     rarity: 'uncommon',
     baseStat: { STR: 14, AGI: 6, VIT: 13, SPA: 6, SPD: 8, LCK: 6 },
@@ -368,7 +368,7 @@ export const PET_SHAPES: PetShape[] = [
   // ─────────── 울창한 숲 ───────────
   {
     id: 22,
-    name: '덩굴뱀',
+    name: '파잎라마',
     elementBias: ['earth', 'wind'],
     rarity: 'common',
     baseStat: { STR: 10, AGI: 11, VIT: 8, SPA: 8, SPD: 7, LCK: 6 },
@@ -382,7 +382,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 23,
-    name: '버섯두꺼비',
+    name: '긴혀장갑수',
     elementBias: ['earth'],
     rarity: 'common',
     baseStat: { STR: 8, AGI: 5, VIT: 14, SPA: 10, SPD: 9, LCK: 5 },
@@ -396,7 +396,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 24,
-    name: '늪지악어',
+    name: '붉은돛악어',
     elementBias: ['water', 'earth'],
     rarity: 'uncommon',
     baseStat: { STR: 14, AGI: 7, VIT: 12, SPA: 7, SPD: 8, LCK: 5 },
@@ -410,7 +410,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 25,
-    name: '달빛표범',
+    name: '점박이치타',
     elementBias: ['wind', 'water'],
     rarity: 'uncommon',
     baseStat: { STR: 13, AGI: 14, VIT: 9, SPA: 9, SPD: 8, LCK: 9 },
@@ -424,7 +424,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 26,
-    name: '고대나무정령',
+    name: '초록털야수',
     elementBias: ['earth', 'wind'],
     rarity: 'rare',
     baseStat: { STR: 11, AGI: 6, VIT: 15, SPA: 13, SPD: 13, LCK: 7 },
@@ -438,7 +438,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 27,
-    name: '숲의수호자',
+    name: '세뿔방패룡',
     elementBias: ['earth', 'wind'],
     rarity: 'boss',
     baseStat: { STR: 17, AGI: 10, VIT: 19, SPA: 14, SPD: 14, LCK: 9 },
@@ -454,7 +454,7 @@ export const PET_SHAPES: PetShape[] = [
   // ─────────── 험준한 산맥 ───────────
   {
     id: 28,
-    name: '뿔산양',
+    name: '엇뿔산양',
     elementBias: ['earth'],
     rarity: 'common',
     baseStat: { STR: 16, AGI: 12, VIT: 18, SPA: 8, SPD: 14, LCK: 7 },
@@ -468,7 +468,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 29,
-    name: '바위게',
+    name: '빙판등짐승',
     elementBias: ['earth', 'water'],
     rarity: 'common',
     baseStat: { STR: 15, AGI: 7, VIT: 23, SPA: 9, SPD: 18, LCK: 6 },
@@ -482,7 +482,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 30,
-    name: '폭풍독수리',
+    name: '악몽천마',
     elementBias: ['wind'],
     rarity: 'uncommon',
     baseStat: { STR: 17, AGI: 19, VIT: 16, SPA: 13, SPD: 13, LCK: 9 },
@@ -496,7 +496,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 31,
-    name: '설인',
+    name: '황금털야수',
     elementBias: ['earth', 'water'],
     rarity: 'rare',
     baseStat: { STR: 20, AGI: 9, VIT: 26, SPA: 11, SPD: 19, LCK: 7 },
@@ -510,7 +510,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 32,
-    name: '산맥의패왕',
+    name: '백호',
     elementBias: ['earth', 'wind'],
     rarity: 'boss',
     baseStat: { STR: 24, AGI: 14, VIT: 31, SPA: 16, SPD: 24, LCK: 10 },
@@ -526,7 +526,7 @@ export const PET_SHAPES: PetShape[] = [
   // ─────────── 불타는 화산 ───────────
   {
     id: 33,
-    name: '용암달팽이',
+    name: '푸른가시멧돼지',
     elementBias: ['fire'],
     rarity: 'common',
     baseStat: { STR: 16, AGI: 6, VIT: 29, SPA: 17, SPD: 23, LCK: 7 },
@@ -540,7 +540,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 34,
-    name: '잿빛까마귀',
+    name: '별관랩터',
     elementBias: ['fire', 'wind'],
     rarity: 'common',
     baseStat: { STR: 18, AGI: 21, VIT: 19, SPA: 18, SPD: 16, LCK: 11 },
@@ -554,7 +554,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 35,
-    name: '마그마골렘',
+    name: '얼룩화룡',
     elementBias: ['fire', 'earth'],
     rarity: 'uncommon',
     baseStat: { STR: 24, AGI: 8, VIT: 31, SPA: 16, SPD: 23, LCK: 7 },
@@ -568,7 +568,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 36,
-    name: '불사조',
+    name: '봉황',
     elementBias: ['fire'],
     rarity: 'rare',
     baseStat: { STR: 20, AGI: 22, VIT: 24, SPA: 25, SPD: 24, LCK: 13 },
@@ -582,7 +582,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 37,
-    name: '화산의군주',
+    name: '여의주화룡',
     elementBias: ['fire', 'earth'],
     rarity: 'boss',
     baseStat: { STR: 30, AGI: 17, VIT: 39, SPA: 26, SPD: 31, LCK: 12 },
@@ -598,7 +598,7 @@ export const PET_SHAPES: PetShape[] = [
   // ─────────── 신비한 빙산 ───────────
   {
     id: 38,
-    name: '얼음여우',
+    name: '북극곰',
     elementBias: ['water'],
     rarity: 'common',
     baseStat: { STR: 20, AGI: 22, VIT: 24, SPA: 24, SPD: 25, LCK: 11 },
@@ -612,7 +612,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 39,
-    name: '빙하매머드',
+    name: '푸른매머드',
     elementBias: ['water', 'earth'],
     rarity: 'common',
     baseStat: { STR: 28, AGI: 10, VIT: 39, SPA: 16, SPD: 28, LCK: 8 },
@@ -626,7 +626,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 40,
-    name: '서리정령',
+    name: '기계비룡',
     elementBias: ['water', 'wind'],
     rarity: 'uncommon',
     baseStat: { STR: 18, AGI: 24, VIT: 26, SPA: 30, SPD: 33, LCK: 13 },
@@ -640,7 +640,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 41,
-    name: '심해리바이어던',
+    name: '서리비룡',
     elementBias: ['water'],
     rarity: 'rare',
     baseStat: { STR: 30, AGI: 18, VIT: 41, SPA: 28, SPD: 31, LCK: 11 },
@@ -654,7 +654,7 @@ export const PET_SHAPES: PetShape[] = [
   },
   {
     id: 42,
-    name: '빙산의여왕',
+    name: '청룡',
     elementBias: ['water', 'wind'],
     rarity: 'boss',
     baseStat: { STR: 32, AGI: 26, VIT: 46, SPA: 34, SPD: 40, LCK: 15 },
