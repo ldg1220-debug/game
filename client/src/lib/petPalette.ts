@@ -107,14 +107,34 @@ export interface PetPalette {
   glow: string;
 }
 
+/**
+ * 채도를 올린다.
+ *
+ * 원본 스톤에이지 도감을 보면 색이 원색에 가깝고 명암 단계가 뚜렷하다.
+ * 자연색에 가깝게 잡은 종 색은 3D 조명 아래에서 한 번 더 탁해져, 나란히
+ * 놓으면 원본보다 눅눅해 보였다.
+ */
+function saturate(hex: string, k: number): string {
+  const v = parseInt(hex.slice(1), 16);
+  const r = (v >> 16) & 255;
+  const g = (v >> 8) & 255;
+  const b = v & 255;
+  const l = 0.299 * r + 0.587 * g + 0.114 * b;
+  const c = (x: number) => Math.max(0, Math.min(255, Math.round(l + (x - l) * k)));
+  return '#' + [c(r), c(g), c(b)].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+
+const SATURATION = 1.3;
+
 /** 종 색 + 원소 강조를 합친 최종 팔레트 */
 export function petPalette(shapeId: number, element: CoreElement): PetPalette {
   const s = SPECIES_PALETTE[shapeId] ?? FALLBACK;
   const e = ELEMENT_PALETTE[element];
   return {
-    main: mix(s.main, e.main, ELEMENT_MIX),
-    sub: mix(s.sub, e.sub, ELEMENT_MIX * 0.7),
-    dark: mix(s.dark, e.dark, ELEMENT_MIX),
+    main: saturate(mix(s.main, e.main, ELEMENT_MIX), SATURATION),
+    // 배는 원본처럼 확실히 밝게 갈라야 형태가 읽힌다
+    sub: saturate(mix(s.sub, e.sub, ELEMENT_MIX * 0.7), SATURATION * 0.85),
+    dark: saturate(mix(s.dark, e.dark, ELEMENT_MIX), SATURATION),
     accent: e.main,
     glow: e.accent,
   };

@@ -619,7 +619,14 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
      */
     const A = ARCHETYPES[body.archetype ?? 'ursine'];
     const legs = body.legs ?? 1;
-    const bodyY = 0.24 + 0.4 * legs;
+    /*
+     * 몸 높이.
+     *
+     * 원본 스톤에이지 도감을 재보면 다리는 전체 높이의 1/4 정도이고 몸이
+     * 땅에 가깝다. 해부학적으로 맞는 비율(다리가 절반)로 만들었더니 늘씬한
+     * 야생동물이 나와서, 뭉툭한 원본 화풍과 결이 달랐다.
+     */
+    const bodyY = 0.17 + 0.26 * legs;
     const pawY = 0.085;
 
     // 척추를 부드러운 곡선으로. 굵기는 구간별 선형 보간.
@@ -629,7 +636,8 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
       const seg = t * (A.spine.length - 1);
       const i = Math.min(A.spine.length - 2, Math.floor(seg));
       const f = seg - i;
-      return (A.spine[i][2] + (A.spine[i + 1][2] - A.spine[i][2]) * f) * pw;
+      // 원본은 몸이 뭉툭하다. 프로파일 굵기를 일괄로 올린다.
+      return (A.spine[i][2] + (A.spine[i + 1][2] - A.spine[i][2]) * f) * pw * 1.18;
     };
     const at = (t: number) => {
       const p = spine.getPoint(Math.max(0, Math.min(1, t)));
@@ -672,7 +680,8 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
 
     /* ── 머리 ── */
     const hs = body.head ?? 1;
-    const headR = 0.29 * ph * hs;
+    // 대두 비율. 머리 지름이 몸통 길이의 절반쯤 된다.
+    const headR = 0.38 * ph * hs;
     const headY = shoulder.y + A.neckRise * ph + headR * 0.5;
     const headX = shoulder.x + A.neckLen * pl + headR * 0.5;
     const skull = add(sphere(headR, 24), z.base, [headX, headY, 0]);
@@ -704,22 +713,50 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
       const r = headR * (A.muzzleThick + (A.muzzleTaper - A.muzzleThick) * t);
       const x = headX + headR * A.skull[0] * 0.42 + mLen * t;
       const y = headY - headR * 0.22 - mLen * t * A.muzzleDrop;
-      const m = add(sphere(r, 14), i > mSteps * 0.68 ? z.belly : z.base, [x, y, 0]);
+      const m = add(sphere(r, 14), i > mSteps * 0.82 ? z.belly : z.base, [x, y, 0]);
       m.scale.set(1, 0.94, 0.86);
       noseX = x;
       noseY = y;
     }
     add(sphere(headR * A.muzzleTaper * 0.78, 12), z.ink, [noseX + headR * 0.06, noseY + headR * 0.05, 0]);
-    // 입선
-    add(new THREE.TorusGeometry(headR * 0.16, 0.01, 6, 14, Math.PI), z.ink, [
-      noseX - mLen * 0.3,
-      noseY - headR * 0.2,
-      0,
-    ], [Math.PI / 2, 0, Math.PI]);
+    /*
+     * 입.
+     *
+     * 원본 도감을 보면 거의 모든 펫이 입을 벌리고 이빨을 드러낸다. 이게
+     * 캐릭터성의 큰 부분인데 이쪽은 입선 하나뿐이라 표정이 없었다.
+     * 초식·소형종(토끼·산양)은 다물린 입선을 유지한다.
+     */
+    const openMouth = A.legType !== 'hoofed' && body.archetype !== 'lagomorph';
+    const mouthX = noseX - mLen * 0.34;
+    const mouthY = noseY - headR * 0.24;
+    if (openMouth) {
+      const cavity = add(sphere(headR * 0.24, 16), z.ink, [mouthX, mouthY, 0]);
+      cavity.scale.set(0.95, 0.58, 0.78);
+      // 혀
+      const tongue = add(sphere(headR * 0.13, 12), z.elem, [mouthX + headR * 0.05, mouthY - headR * 0.05, 0]);
+      tongue.scale.set(1.1, 0.34, 0.8);
+      // 윗니 — 벌린 입 위쪽에 줄지어 붙는다
+      // 처음엔 이빨을 크게 냈더니 주둥이 끝이 흰 덩어리로 뭉쳤다
+      for (const k of [-1.3, -0.45, 0.45, 1.3]) {
+        add(cone(headR * 0.032, headR * 0.1, 6), z.sclera, [
+          mouthX + headR * 0.16, mouthY + headR * 0.13, k * headR * 0.1,
+        ], [0, 0, Math.PI]);
+      }
+      // 아랫니
+      for (const k of [-0.85, 0.85]) {
+        add(cone(headR * 0.028, headR * 0.09, 6), z.sclera, [
+          mouthX + headR * 0.14, mouthY - headR * 0.14, k * headR * 0.1,
+        ]);
+      }
+    } else {
+      add(new THREE.TorusGeometry(headR * 0.16, 0.01, 6, 14, Math.PI), z.ink, [
+        mouthX, mouthY, 0,
+      ], [Math.PI / 2, 0, Math.PI]);
+    }
     addFangs(noseX - mLen * 0.18, noseY - headR * 0.18, hs);
 
     // 눈 — 포식자는 정면에 모이고, 초식·피식자는 옆으로 벌어진다
-    face(headX, headY + headR * 0.22, 0, headR, A.eyeYaw, 0.2, headR * A.eyeSize);
+    face(headX, headY + headR * 0.2, 0, headR, A.eyeYaw, 0.2, headR * A.eyeSize * 0.74);
     for (const side of [-1, 1]) {
       add(capsule(0.02, headR * 0.3), z.mark, [
         headX + headR * 0.42, headY + headR * 0.5, side * headR * 0.5,
@@ -778,7 +815,8 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
         const zz = side * ar * A.zSquash * 0.78;
         const topY = anchor.y - ar * 0.3;
         const span = Math.max(0.14, topY - pawY);
-        const t = A.legThick * (body.build === 'sturdy' ? 1.18 : 0.92);
+        // 레퍼런스는 다리가 굵고 발이 크다
+        const t = A.legThick * 1.45 * (body.build === 'sturdy' ? 1.18 : 0.92);
 
         if (A.legType === 'plantigrade') {
           const up = add(capsule(t * 1.15, span * 0.42), z.base, [anchor.x, pawY + span * 0.72, zz]);
