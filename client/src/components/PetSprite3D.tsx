@@ -168,6 +168,105 @@ function getShared() {
   return shared;
 }
 
+/**
+ * 로프트 — 곡선을 따라 타원 단면을 이어 붙인 껍질.
+ *
+ * 지금까지 몸통·꼬리를 구를 촘촘히 쌓아 만들었다. 그래서 실루엣이 파도처럼
+ * 울퉁불퉁하고, 어떤 비율을 줘도 "점토 공을 붙인 장난감"으로 읽혔다.
+ * 원본은 단면이 또렷하고 능선이 살아 있다. 단면을 직접 만들어 이어야
+ * 등줄기·배 능선 같은 각이 생긴다.
+ *
+ * keel > 0이면 배가 아래로 뾰족해지고, ridge > 0이면 등줄기가 솟는다.
+ */
+function loft(
+  pts: THREE.Vector3[],
+  radii: number[],
+  opt: { wide?: number; tall?: number; keel?: number; ridge?: number; sides?: number } = {},
+): THREE.BufferGeometry {
+  const N = opt.sides ?? 14;
+  const wide = opt.wide ?? 1;
+  const tall = opt.tall ?? 1;
+  const keel = opt.keel ?? 0;
+  const ridge = opt.ridge ?? 0;
+  const pos: number[] = [];
+  const nrm: number[] = [];
+  const uv: number[] = [];
+  const idx: number[] = [];
+
+  const up = new THREE.Vector3(0, 1, 0);
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    const t =
+      i === 0 ? pts[1].clone().sub(pts[0]) :
+      i === pts.length - 1 ? pts[i].clone().sub(pts[i - 1]) :
+      pts[i + 1].clone().sub(pts[i - 1]);
+    t.normalize();
+    const side = new THREE.Vector3().crossVectors(t, up).normalize();
+    if (side.lengthSq() < 1e-6) side.set(0, 0, 1);
+    const u2 = new THREE.Vector3().crossVectors(side, t).normalize();
+    const r = radii[i];
+    for (let j = 0; j <= N; j++) {
+      const a = (j / N) * Math.PI * 2;
+      const ca = Math.cos(a);
+      const sa = Math.sin(a);
+      // 아래쪽은 용골처럼 좁히고 위쪽은 능선으로 세운다
+      const shape = 1 + (sa < 0 ? keel * sa : ridge * sa);
+      const off = side.clone().multiplyScalar(ca * r * wide * shape)
+        .addScaledVector(u2, sa * r * tall * shape);
+      pos.push(p.x + off.x, p.y + off.y, p.z + off.z);
+      const n = off.clone().normalize();
+      nrm.push(n.x, n.y, n.z);
+      uv.push(j / N, i / (pts.length - 1));
+    }
+  }
+  const ring = N + 1;
+  for (let i = 0; i < pts.length - 1; i++) {
+    for (let j = 0; j < N; j++) {
+      const a = i * ring + j;
+      const b = a + ring;
+      idx.push(a, b, a + 1, a + 1, b, b + 1);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+/**
+ * 윤곽선 — 뒤집힌 껍질(inverted hull).
+ *
+ * 원본은 부위마다 진한 경계가 있어 형태가 딱 끊긴다. 이쪽은 모든 부위가
+ * 같은 밝기로 매끈하게 이어져 서로 녹아 버렸다. 각 메시를 법선 방향으로
+ * 조금 부풀린 어두운 복제본을 뒷면만 그려 덧대면 외곽선이 생긴다.
+ */
+const OUTLINE_MAT = new THREE.MeshBasicMaterial({ color: 0x0d0a12, side: THREE.BackSide });
+
+function addOutlines(group: THREE.Group, scale = 0.03) {
+  const targets: THREE.Mesh[] = [];
+  group.traverse((o) => {
+    if (o instanceof THREE.Mesh && !o.userData.noOutline && !o.userData.noFrame) targets.push(o);
+  });
+  for (const m of targets) {
+    m.geometry.computeBoundingSphere();
+    const r = m.geometry.boundingSphere?.radius ?? 0;
+    const s = Math.max(m.scale.x, m.scale.y, m.scale.z);
+    // 아주 작은 부품(눈 하이라이트·발톱 끝)에 두르면 검은 점만 남는다
+    if (r * s < 0.035) continue;
+    const o = new THREE.Mesh(m.geometry, OUTLINE_MAT);
+    o.position.copy(m.position);
+    o.rotation.copy(m.rotation);
+    o.quaternion.copy(m.quaternion);
+    const grow = 1 + scale / Math.max(0.05, r * s);
+    o.scale.set(m.scale.x * grow, m.scale.y * grow, m.scale.z * grow);
+    o.renderOrder = -1;
+    (m.parent ?? group).add(o);
+  }
+}
+
 export type ArchetypeName =
   | 'canine' | 'feline' | 'ursine' | 'caprine' | 'lagomorph' | 'reptile';
 
@@ -365,27 +464,35 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
        * 캐릭터를 살리는 건 눈이다. 크게 키우고, 검은 테두리(눈두덩)와
        * 윗눈꺼풀을 넣어 배경색과 상관없이 윤곽이 잡히게 한다.
        */
+      /*
+       * 눈에는 윤곽선을 두르지 않는다. 눈두덩이 이미 검은 테두리 역할을
+       * 하는데 그 위에 외곽선까지 얹으니 눈이 검은 고리로 뭉개졌다.
+       */
+      const noLine = (m: THREE.Mesh) => {
+        m.userData.noOutline = true;
+        return m;
+      };
       const socket = at(-0.2);
-      const sock = add(sphere(r * 1.34, 16), z.ink, [socket.x, socket.y, socket.z]);
+      const sock = noLine(add(sphere(r * 1.34, 16), z.ink, [socket.x, socket.y, socket.z]));
       sock.lookAt(socket.clone().add(d));
       sock.scale.set(1, 1, 0.4);
 
       const e = at(0);
-      add(sphere(r, 22), z.sclera, [e.x, e.y, e.z]);
+      noLine(add(sphere(r, 22), z.sclera, [e.x, e.y, e.z]));
       const i2 = at(0.42);
-      add(sphere(r * 0.74, 20), z.iris, [i2.x, i2.y, i2.z]);
+      noLine(add(sphere(r * 0.74, 20), z.iris, [i2.x, i2.y, i2.z]));
       const p2 = at(0.66);
-      add(sphere(r * 0.42, 16), z.ink, [p2.x, p2.y, p2.z]);
+      noLine(add(sphere(r * 0.42, 16), z.ink, [p2.x, p2.y, p2.z]));
       const h2 = at(0.76);
-      const hl = add(sphere(r * 0.28, 12), z.sclera, [h2.x, h2.y + r * 0.36, h2.z]);
+      const hl = noLine(add(sphere(r * 0.28, 12), z.sclera, [h2.x, h2.y + r * 0.36, h2.z]));
       hl.castShadow = false;
       // 작은 보조 하이라이트 — 눈이 젖어 보인다
       const h3 = at(0.74);
-      add(sphere(r * 0.13, 8), z.sclera, [h3.x, h3.y - r * 0.34, h3.z]).castShadow = false;
+      noLine(add(sphere(r * 0.13, 8), z.sclera, [h3.x, h3.y - r * 0.34, h3.z])).castShadow = false;
 
       // 윗눈꺼풀 — 눈매를 만든다
       const lid = at(0.1);
-      const lidM = add(sphere(r * 1.06, 16), z.base, [lid.x, lid.y + r * 0.72, lid.z]);
+      const lidM = noLine(add(sphere(r * 1.06, 16), z.base, [lid.x, lid.y + r * 0.72, lid.z]));
       lidM.lookAt(lid.clone().add(d));
       lidM.scale.set(1, 0.62, 0.5);
     }
@@ -745,19 +852,33 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
       return new THREE.Vector3(p.x, bodyY + p.y, 0);
     };
 
-    const SEGS = 26;
+    /*
+     * 몸통은 로프트로 한 덩어리를 뽑는다.
+     *
+     * 구를 촘촘히 쌓았더니 실루엣이 파도처럼 울퉁불퉁하고, 어떤 비율을 줘도
+     * 점토 공을 붙인 장난감으로 읽혔다. 단면을 직접 이어야 등줄기와 가슴
+     * 능선이 각을 갖는다.
+     */
+    const SEGS = 22;
+    const bodyPts: THREE.Vector3[] = [];
+    const bodyR: number[] = [];
     for (let i = 0; i <= SEGS; i++) {
       const t = i / SEGS;
-      const p = at(t);
-      const r = radiusOn(t);
-      const seg = add(sphere(r, 18), z.base, [p.x, p.y, 0]);
-      seg.scale.set(1, 1, A.zSquash);
-      // 배 — 아래쪽만 밝게. 앞다리~뒷다리 사이에만 넣어 가슴선을 만든다.
-      if (t > 0.12 && t < 0.82) {
-        const b = add(sphere(r * 0.72, 12), z.belly, [p.x, p.y - r * 0.5, 0]);
-        b.scale.set(1, 0.55, A.zSquash * 0.9);
-      }
+      bodyPts.push(at(t));
+      // 코·꼬리 끝은 좁혀 닫는다
+      bodyR.push(radiusOn(t) * (0.34 + Math.sin(Math.min(1, t * 1.12) * Math.PI) * 0.72));
     }
+    add(loft(bodyPts, bodyR, { wide: A.zSquash, tall: 1.04, keel: 0.14, ridge: 0.1, sides: 16 }), z.base, [0, 0, 0]);
+    // 배 — 아래쪽만 밝게. 앞다리~뒷다리 사이에만 넣어 가슴선을 만든다.
+    const bellyPts: THREE.Vector3[] = [];
+    const bellyR: number[] = [];
+    for (let i = 0; i <= 12; i++) {
+      const t = 0.14 + (i / 12) * 0.66;
+      const p = at(t);
+      bellyPts.push(new THREE.Vector3(p.x, p.y - radiusOn(t) * 0.46, 0));
+      bellyR.push(radiusOn(t) * 0.56 * Math.sin((i / 12) * Math.PI) ** 0.4);
+    }
+    add(loft(bellyPts, bellyR, { wide: A.zSquash * 0.92, tall: 0.42, sides: 12 }), z.belly, [0, 0, 0]);
     addPattern(at(0.5).x, at(0.5).y, 0.7 * pl, radiusOn(0.5));
     addCracks(at(0.5).x, at(0.5).y, 0.8 * pl, radiusOn(0.5));
 
@@ -973,23 +1094,27 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
      */
     const tailBase = at(1);
     const tailChain = (len: number, r0: number, r1: number, lift: number, tipMat: THREE.Material) => {
-      const N = 12;
+      const N = 14;
+      const pts: THREE.Vector3[] = [];
+      const rs: number[] = [];
       for (let i = 0; i <= N; i++) {
         const t = i / N;
-        const bulge = Math.sin(t * Math.PI) * 0.35 + 1;
-        const r = (r0 + (r1 - r0) * t) * bulge;
-        const s = add(sphere(r, 14), t > 0.82 ? tipMat : z.base, [
+        const bulge = Math.sin(t * Math.PI) * 0.42 + 1;
+        rs.push((r0 + (r1 - r0) * t) * bulge * (i === N ? 0.2 : 1));
+        pts.push(new THREE.Vector3(
           tailBase.x - len * t,
-          // 처음엔 sin으로 크게 들어올려 등 위에 아치를 그렸다. 밑동만
-          // 살짝 들고 뒤로 흐르게 한다.
+          // 밑동만 살짝 들고 뒤로 흐른다
           tailBase.y + Math.sin(t * Math.PI * 0.55) * lift - t * t * lift * 0.9,
           0,
-        ]);
-        s.scale.set(1, 1, 0.95);
+        ));
       }
+      add(loft(pts, rs, { wide: 0.95, tall: 1.05, ridge: 0.12, sides: 12 }), z.base, [0, 0, 0]);
+      // 꼬리 끝 색 구분
+      const tip = add(sphere(rs[N - 2] * 1.02, 14), tipMat, [pts[N - 2].x, pts[N - 2].y, 0]);
+      tip.scale.set(1.3, 1, 0.95);
     };
     if (body.tail === 'bushy') {
-      tailChain(0.78 * pl, hipR * 0.66, hipR * 0.3, 0.16, z.belly);
+      tailChain(0.8 * pl, hipR * 0.95, hipR * 0.5, 0.16, z.belly);
     } else if (body.tail === 'thin') {
       tailChain(0.8 * pl, hipR * 0.24, hipR * 0.11, 0.3, z.belly);
     } else if (body.tail === 'puff') {
@@ -1048,15 +1173,24 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
       const k = Math.min(TORSO.length - 2, Math.floor(seg));
       return bs * (TORSO[k] + (TORSO[k + 1] - TORSO[k]) * (seg - k));
     };
-    for (let i = 0; i <= 12; i++) {
-      const t = i / 12;
-      const p = spinePt(t);
-      const m = add(sphere(torsoR(t), 18), z.base, [p.x, p.y, 0]);
-      m.scale.set(1, 1, 0.9);
-      // 배 판 — 레퍼런스는 배가 확실히 밝은 다른 색이다
-      const b = add(sphere(torsoR(t) * 0.76, 14), z.belly, [p.x + torsoR(t) * 0.45, p.y, 0]);
-      b.scale.set(0.66, 1, 0.78);
+    const tPts: THREE.Vector3[] = [];
+    const tR: number[] = [];
+    for (let i = 0; i <= 14; i++) {
+      const t = i / 14;
+      tPts.push(spinePt(t));
+      tR.push(torsoR(t) * (i === 0 ? 0.55 : i === 14 ? 0.7 : 1));
     }
+    add(loft(tPts, tR, { wide: 0.9, tall: 1.02, keel: 0.12, ridge: 0.08, sides: 16 }), z.base, [0, 0, 0]);
+    // 배 판 — 레퍼런스는 배가 확실히 밝은 다른 색이다
+    const bPts: THREE.Vector3[] = [];
+    const bR: number[] = [];
+    for (let i = 0; i <= 10; i++) {
+      const t = 0.08 + (i / 10) * 0.78;
+      const p = spinePt(t);
+      bPts.push(new THREE.Vector3(p.x + torsoR(t) * 0.44, p.y, 0));
+      bR.push(torsoR(t) * 0.5 * Math.sin((i / 10) * Math.PI) ** 0.35);
+    }
+    add(loft(bPts, bR, { wide: 0.72, tall: 0.95, sides: 12 }), z.belly, [0, 0, 0]);
 
     /* 머리 — 전체 높이의 40% 가까이 되는 대두 */
     const headR = 0.34 * ph * (body.head ?? 1);
@@ -1134,15 +1268,14 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
     }
 
     /* 꼬리 — 뒤로 뻗어 앞으로 기운 상체와 축을 맞춘다 */
-    for (let i = 0; i <= 13; i++) {
-      const t = i / 13;
-      const r = bs * (0.72 - t * 0.6);
-      add(sphere(r, 14), i % 3 === 0 ? z.mark : z.base, [
-        -t * 0.92 * pl,
-        hipY - t * t * (hipY - 0.12) * 0.85,
-        0,
-      ]);
+    const btPts: THREE.Vector3[] = [];
+    const btR: number[] = [];
+    for (let i = 0; i <= 14; i++) {
+      const t = i / 14;
+      btR.push(bs * (0.72 - t * 0.62) * (i === 14 ? 0.25 : 1));
+      btPts.push(new THREE.Vector3(-t * 0.92 * pl, hipY - t * t * (hipY - 0.12) * 0.85, 0));
     }
+    add(loft(btPts, btR, { wide: 0.92, tall: 1.05, ridge: 0.16, sides: 12 }), z.base, [0, 0, 0]);
 
     // 등가시
     if (body.spikes) {
@@ -1631,6 +1764,11 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
     addAura(0.42 * ph, 0.72 * pw);
   }
 
+  /*
+   * 마지막에 윤곽선을 두른다. 부위가 모두 같은 밝기로 매끈하게 이어져
+   * 서로 녹아 버리던 게 이 화풍이 장난감처럼 보인 큰 이유였다.
+   */
+  addOutlines(g);
   return g;
 }
 
