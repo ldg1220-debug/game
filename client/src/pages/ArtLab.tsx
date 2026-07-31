@@ -20,6 +20,8 @@ const KIND_LABEL: Record<string, string> = {
   shelled: '등껍질',
   serpent: '뱀',
   golem: '원소체',
+  eastern: '동양룡',
+  xuanwu: '현무',
 };
 
 const ARCH_LABEL: Record<string, string> = {

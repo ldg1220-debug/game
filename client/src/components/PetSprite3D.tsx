@@ -22,7 +22,7 @@ export type Pattern = 'spots' | 'stripes' | 'none';
 
 /** 종별 체형. 프리미티브 조합의 파라미터. */
 export interface PetBody {
-  kind: 'quadruped' | 'biped' | 'blob' | 'bird' | 'shelled' | 'serpent' | 'golem';
+  kind: 'quadruped' | 'biped' | 'blob' | 'bird' | 'shelled' | 'serpent' | 'golem' | 'eastern' | 'xuanwu';
   surface: SurfaceKind;
   /** 몸통 길이·높이·폭 배율 */
   proportions: [number, number, number];
@@ -1526,6 +1526,194 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
       const core = add(sphere(0.12 * pw, 16), z.glow, [spinePt(0.4).x + torsoR(0.4) * 0.5, spinePt(0.4).y, 0]);
       core.castShadow = false;
     }
+  } else if (body.kind === 'eastern') {
+    /*
+     * 동양룡(청룡·황룡).
+     *
+     * 앞서 이걸 serpent(똬리 튼 뱀)에 뿔 플래그만 켜서 만들었다. 이름만
+     * 바꾼 셈이었다. 동양룡은 알려진 형상이 따로 있다 — 공중에 S자로
+     * 굽이치는 긴 몸, 짧은 네 다리와 발톱, 사슴뿔과 갈기를 단 머리,
+     * 길게 흐르는 수염, 앞발에 쥔 여의주.
+     */
+    const N = 40;
+    const pts: THREE.Vector3[] = [];
+    const rs: number[] = [];
+    for (let i = 0; i <= N; i++) {
+      const t = i / N;
+      // 꼬리(뒤·아래)에서 머리(앞·위)로 굽이친다
+      /*
+       * 처음엔 x로 길게 뻗게 했더니 수평으로 누운 지네처럼 보였다.
+       * 동양룡은 위로 굽이쳐 오르는 S자다 — 가로 폭을 줄이고 높이를 올린다.
+       */
+      pts.push(new THREE.Vector3(
+        (-0.34 + t * 0.82 + Math.sin(t * Math.PI * 1.9) * 0.3) * pl,
+        (0.12 + t * 1.46) * ph,
+        Math.sin(t * Math.PI * 2.2 + 0.4) * 0.3 * pw,
+      ));
+      // 가슴께가 가장 굵고 양끝이 가늘다
+      rs.push(0.19 * pw * (0.3 + Math.sin(Math.min(1, t * 1.15) * Math.PI) * 0.95));
+    }
+    add(loft(pts, rs, { wide: 0.92, tall: 1.05, ridge: 0.2, sides: 14 }), z.base, [0, 0, 0]);
+    // 배비늘 — 아래쪽만 밝게
+    for (let i = 2; i < N - 1; i += 2) {
+      const v = add(sphere(rs[i] * 0.6, 10), z.belly, [pts[i].x, pts[i].y - rs[i] * 0.72, pts[i].z]);
+      v.scale.set(1.2, 0.4, 1);
+      v.userData.noOutline = true;
+    }
+    // 등지느러미 갈기 — 목덜미부터 꼬리까지
+    for (let i = 4; i < N - 2; i += 2) {
+      const t = i / N;
+      const f = add(cone(rs[i] * 0.5, rs[i] * (1.6 + Math.sin(t * Math.PI) * 1.2), 5), z.belly, [
+        pts[i].x, pts[i].y + rs[i] * 1.0, pts[i].z,
+      ], [0, 0, -0.3]);
+      f.userData.noOutline = true;
+    }
+
+    /* 네 다리 — 짧고 발톱이 크다 */
+    for (const [ti, side] of [[0.3, -1], [0.3, 1], [0.68, -1], [0.68, 1]] as [number, number][]) {
+      const i = Math.round(ti * N);
+      const b = pts[i];
+      const zz = b.z + side * rs[i] * 1.0;
+      add(capsule(rs[i] * 0.45, rs[i] * 1.6), z.base, [b.x - rs[i] * 0.9, b.y - rs[i] * 1.2, zz], [0, 0, side * 0.2 - 0.6]);
+      const paw = add(sphere(rs[i] * 0.62, 12), z.paw, [b.x - rs[i] * 2.0, b.y - rs[i] * 2.1, zz]);
+      paw.scale.set(1.2, 0.8, 1);
+      for (const k of [-1, 0, 1]) {
+        add(cone(rs[i] * 0.17, rs[i] * 0.75, 6), z.sclera, [
+          b.x - rs[i] * 2.9, b.y - rs[i] * 2.3, zz + k * rs[i] * 0.45,
+        ], [0, 0, Math.PI / 2 + 0.4]);
+      }
+    }
+
+    /* 머리 — 갈기, 사슴뿔, 수염, 벌린 입 */
+    const hp = pts[N];
+    const hr = 0.24 * pw * (body.head ?? 1);
+    const skull = add(sphere(hr, 22), z.base, [hp.x + hr * 0.5, hp.y + hr * 0.3, hp.z]);
+    skull.scale.set(1.25, 0.9, 0.95);
+    const hx = hp.x + hr * 0.5;
+    const hy = hp.y + hr * 0.3;
+    // 긴 주둥이
+    let nx = hx;
+    let ny = hy;
+    for (let i = 0; i <= 8; i++) {
+      const t = i / 8;
+      nx = hx + hr * (0.9 + t * 1.15);
+      ny = hy - hr * 0.15 - t * hr * 0.1;
+      const m = add(sphere(hr * (0.42 - t * 0.2), 12), t > 0.8 ? z.belly : z.base, [nx, ny, hp.z]);
+      m.scale.set(1, 0.9, 0.88);
+    }
+    add(sphere(hr * 0.1, 10), z.ink, [nx + hr * 0.16, ny + hr * 0.1, hp.z]);
+    // 벌린 입 + 이빨
+    const cav = add(sphere(hr * 0.26, 14), z.ink, [nx - hr * 0.5, ny - hr * 0.22, hp.z]);
+    cav.scale.set(1.2, 0.5, 0.8);
+    for (const k of [-1.1, -0.4, 0.4, 1.1]) {
+      add(cone(hr * 0.05, hr * 0.16, 6), z.sclera, [
+        nx - hr * 0.3, ny - hr * 0.1, hp.z + k * hr * 0.14,
+      ], [0, 0, Math.PI]);
+    }
+    // 갈기 — 머리 뒤로 흐른다
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 9) * Math.PI - Math.PI / 2;
+      const m = add(cone(hr * 0.16, hr * (0.9 + Math.cos(a) * 0.5), 5), z.belly, [
+        hx - hr * 0.9,
+        hy + Math.cos(a) * hr * 0.7,
+        hp.z + Math.sin(a) * hr * 0.75,
+      ], [Math.sin(a) * 0.6, 0, 1.1]);
+      m.userData.noOutline = true;
+    }
+    face(hx, hy + hr * 0.28, hp.z, hr, 0.44, 0.2, hr * 0.3);
+    addWhiskers(nx, ny, hr);
+    // 사슴뿔
+    for (const side of [-1, 1]) {
+      add(capsule(hr * 0.09, hr * 0.8), z.elem, [hx - hr * 0.4, hy + hr * 1.05, hp.z + side * hr * 0.4], [0, 0, side * 0.35]);
+      for (const b2 of [0.3, 0.6]) {
+        add(capsule(hr * 0.06, hr * 0.42), z.elem, [
+          hx - hr * (0.6 + b2 * 0.4), hy + hr * (1.2 + b2), hp.z + side * hr * (0.5 + b2 * 0.5),
+        ], [side * 0.7, 0, side * 0.9]);
+      }
+    }
+    // 여의주 — 앞발에 쥔다
+    const claw = pts[Math.round(0.68 * N)];
+    addOrb(claw.x - 0.2 * pl, claw.y - 0.22 * ph, claw.z + 0.18 * pw, 0.15 * pw);
+    addAura(pts[Math.round(N / 2)].y, 0.75 * pw);
+  } else if (body.kind === 'xuanwu') {
+    /*
+     * 현무.
+     *
+     * 앞서 이걸 shelled(평범한 거북)에 가시뿔만 붙여 만들었다. 현무는
+     * 거북과 뱀이 한 몸인 형상이다 — 등껍질에서 긴 뱀 목이 앞으로 나오고,
+     * 뒤로는 뱀 꼬리가 뻗어 몸을 감는다. 이 둘이 없으면 그냥 거북이다.
+     */
+    const [Rx, Ry, Rz] = [0.62 * pw, 0.42 * pw, 0.56 * pw];
+    const shell = add(sphere(1, 28), z.belly, [0, 0.46, 0]);
+    shell.scale.set(Rx, Ry, Rz);
+    // 껍질 판
+    for (const [phi, cnt, off, sz] of [[0.66, 5, 0.3, 0.13], [0.2, 8, 0, 0.12]] as [number, number, number, number][]) {
+      for (let i = 0; i < cnt; i++) {
+        const th = (i / cnt) * Math.PI * 2 + off;
+        const dir = new THREE.Vector3(Math.cos(phi) * Math.cos(th), Math.sin(phi), Math.cos(phi) * Math.sin(th));
+        const pos = new THREE.Vector3(dir.x * Rx, 0.46 + dir.y * Ry, dir.z * Rz);
+        const pl2 = add(new THREE.CylinderGeometry(sz * pw, sz * pw * 1.1, 0.05, 6), z.mark, [pos.x, pos.y, pos.z]);
+        orient(pl2, new THREE.Vector3(dir.x / (Rx * Rx), dir.y / (Ry * Ry), dir.z / (Rz * Rz)));
+        pl2.rotateY(th);
+      }
+    }
+    // 다리
+    for (const fx of [0.34, -0.36]) {
+      for (const side of [-1, 1]) {
+        const f = add(capsule(0.11 * pw, 0.12), z.paw, [fx * pl, 0.17, side * 0.4 * pw], [0, 0, Math.PI / 2]);
+        f.scale.set(1, 1.2, 1);
+        for (const k of [-1, 0, 1]) {
+          add(cone(0.022 * pw, 0.07, 6), z.sclera, [fx * pl + 0.11, 0.14, side * 0.4 * pw + k * 0.055], [0, 0, -Math.PI / 2]);
+        }
+      }
+    }
+
+    /* 뱀 목 — 껍질 앞에서 길게 나와 위로 든다 */
+    const neckPts: THREE.Vector3[] = [];
+    const neckR: number[] = [];
+    for (let i = 0; i <= 16; i++) {
+      const t = i / 16;
+      neckPts.push(new THREE.Vector3(
+        Rx * 0.6 + t * 0.72 * pl,
+        0.46 + Math.sin(t * 1.5) * 0.42 * ph,
+        0,
+      ));
+      neckR.push(0.13 * pw * (1 - t * 0.28));
+    }
+    add(loft(neckPts, neckR, { wide: 0.95, tall: 1.05, sides: 12 }), z.base, [0, 0, 0]);
+    const sh = neckPts[16];
+    const shr = 0.17 * pw;
+    const shead = add(sphere(shr, 20), z.base, [sh.x + shr * 0.5, sh.y + shr * 0.2, 0]);
+    shead.scale.set(1.35, 0.82, 0.95);
+    const sx = sh.x + shr * 0.5;
+    const sy = sh.y + shr * 0.2;
+    add(sphere(shr * 0.1, 10), z.ink, [sx + shr * 1.15, sy - shr * 0.05, 0]);
+    face(sx, sy + shr * 0.2, 0, shr, 0.48, 0.2, shr * 0.3);
+    // 갈라진 혀
+    add(capsule(shr * 0.06, shr * 0.5), z.elem, [sx + shr * 1.5, sy - shr * 0.25, 0], [0, 0, Math.PI / 2 - 0.3]);
+    for (const side of [-1, 1]) {
+      add(capsule(shr * 0.04, shr * 0.22), z.elem, [sx + shr * 2.0, sy - shr * 0.4, side * shr * 0.1], [0, side * 0.5, Math.PI / 2]);
+      add(cone(shr * 0.09, shr * 0.34, 6), z.sclera, [sx + shr * 0.9, sy - shr * 0.4, side * shr * 0.22], [0, 0, Math.PI]);
+    }
+    if (body.horns) addHorns(sx, sy, shr * 3.2);
+
+    /* 뱀 꼬리 — 껍질 뒤에서 나와 위로 감아 올린다 */
+    const tPts2: THREE.Vector3[] = [];
+    const tR2: number[] = [];
+    for (let i = 0; i <= 20; i++) {
+      const t = i / 20;
+      const a = t * Math.PI * 1.5;
+      tPts2.push(new THREE.Vector3(
+        -Rx * 0.6 - Math.sin(a) * 0.62 * pl,
+        0.42 + (1 - Math.cos(a)) * 0.34 * ph,
+        Math.sin(a * 1.4) * 0.26 * pw,
+      ));
+      tR2.push(0.115 * pw * (1 - t * 0.85));
+    }
+    add(loft(tPts2, tR2, { wide: 0.95, tall: 1.05, sides: 12 }), z.base, [0, 0, 0]);
+
+    addAura(0.6, Math.max(Rx, Rz) * 1.2);
+    addCrown(sx, sy, shr);
   } else if (body.kind === 'blob') {
     /*
      * 젤리 몸통.
@@ -2027,7 +2215,7 @@ export const PET_BODIES: Record<number, PetBody> = {
   // "penguin-phoenix hybrid, blue upper body, flame plumage crest and tail"
   13: { kind: 'bird', surface: 'feather', proportions: [0.95, 1.05, 1.1], head: 1.2, glow: true, crest: 'flame', fangs: true, presence: 1.08 },
   // "Xuanwu, turtle-snake hybrid, teal segmented shell, long snake neck"
-  14: { kind: 'shelled', surface: 'scale', proportions: [1.25, 1.25, 1.34], horns: 'spike', armor: true, fangs: true, aura: true, fieryEyes: true, presence: 1.22 },
+  14: { kind: 'xuanwu', surface: 'scale', proportions: [1.15, 1.15, 1.2], horns: 'spike', aura: true, fieryEyes: true, presence: 1.22 },
   // "tan goat-like creature, long curved horns, white beard, cloven hooves"
   15: { kind: 'quadruped', archetype: 'caprine', surface: 'fur', proportions: [0.95, 1.0, 0.92], legs: 1.15, ears: 'pointed', tail: 'puff', snout: 0.55, horns: 'curved' },
   // "red raptor dinosaur, orange feather crest, yellow snout, feathered claws"
@@ -2076,7 +2264,7 @@ export const PET_BODIES: Record<number, PetBody> = {
   // "majestic phoenix in full flight, fiery red-orange-yellow plumage"
   36: { kind: 'bird', surface: 'feather', proportions: [1.05, 0.98, 1.0], head: 1.15, glow: true, wings: 'feather', aura: true, fieryEyes: true, crest: 'flame', presence: 1.14 },
   // "Eastern dragon standing, orange-red scales, long yellow tendrils, golden orb"
-  37: { kind: 'biped', surface: 'scale', proportions: [1.3, 1.3, 1.32], head: 1.0, snout: 0.9, horns: 'antler', whiskers: true, orb: true, spikes: true, glow: true, aura: true, fangs: true, fieryEyes: true, crest: 'flame', presence: 1.3 },
+  37: { kind: 'eastern', surface: 'scale', proportions: [1.15, 1.1, 1.1], head: 1.05, whiskers: true, orb: true, aura: true, fieryEyes: true, presence: 1.3 },
   // ─── 신비한 빙산 ───
   // "shaggy polar bear with cream-white fur, walking forward"
   38: { kind: 'quadruped', archetype: 'ursine', surface: 'fur', proportions: [1.05, 1.0, 1.12], legs: 0.9, ears: 'round', tail: 'puff', snout: 0.7, fangs: true },
@@ -2087,7 +2275,7 @@ export const PET_BODIES: Record<number, PetBody> = {
   // "ice dragon, light blue scales with white fur, wings of ice formations"
   41: { kind: 'quadruped', archetype: 'reptile', surface: 'scale', proportions: [1.25, 1.15, 1.15], legs: 0.95, ears: 'none', tail: 'lizard', snout: 0.85, wings: 'membrane', horns: 'crystal', spikes: true, fangs: true, glow: true, fieryEyes: true, presence: 1.16 },
   // "light blue Eastern dragon, flowing white mane and whiskers, golden antlers, orb"
-  42: { kind: 'serpent', surface: 'scale', proportions: [1.2, 1.15, 1.1], horns: 'antler', whiskers: true, crest: 'fin', fins: true, fangs: true, aura: true, fieryEyes: true, presence: 1.24 },
+  42: { kind: 'eastern', surface: 'scale', proportions: [1.2, 1.15, 1.12], head: 1.05, whiskers: true, orb: true, aura: true, fieryEyes: true, presence: 1.26 },
 };
 
 /*
