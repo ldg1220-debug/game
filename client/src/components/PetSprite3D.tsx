@@ -189,13 +189,20 @@ function getShared() {
   const S = 0.92;
   const camera = new THREE.OrthographicCamera(-S, S, S, -S, 0.1, 100);
   const AZ = Math.PI / 4;
-  const EL = 0.66;
+  /*
+   * 앙각.
+   *
+   * 0.66rad(38도)로 잡았더니 위에서 너무 눌러봐서 네발 동물의 옆 실루엣이
+   * 사라졌다 — 악어는 쐐기로, 라마는 덩어리로 찍혔다. 다리·목·주둥이 같은
+   * 옆모습 정보가 살려면 각을 낮춰야 한다. 0.46rad(26도).
+   */
+  const EL = 0.46;
   camera.position.set(
     Math.cos(AZ) * Math.cos(EL) * 8,
     Math.sin(EL) * 8,
     Math.sin(AZ) * Math.cos(EL) * 8,
   );
-  camera.lookAt(0, 0.8, 0);
+  camera.lookAt(0, 0.72, 0);
 
   shared = { renderer, scene, camera };
   return shared;
@@ -462,9 +469,31 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
     return m;
   };
 
-  const sphere = (r: number, seg = 26) => new THREE.SphereGeometry(r, seg, seg);
-  const capsule = (r: number, len: number) => new THREE.CapsuleGeometry(r, len, 8, 20);
-  const cone = (r: number, h: number, seg = 12) => new THREE.ConeGeometry(r, h, seg);
+  /*
+   * 픽셀 격자 최소 크기.
+   *
+   * 정사영 프러스텀이 1.84 월드 단위를 128px에 담으므로 1px ≈ 0.0144다.
+   * 픽셀 아트에서 형태로 읽히려면 최소 5~6px은 있어야 하니 지름 0.08,
+   * 반지름 0.04가 하한이다. 지금까지 발톱(r=0.016) · 이빨(r=0.03) ·
+   * 콧구멍(r=0.017) 같은 걸 잔뜩 붙여 놨는데 전부 1~2px이라 형태가
+   * 아니라 노이즈로 찍혔다. 풀 3D로 모델링한 뒤 축소하는 방식의 한계다.
+   *
+   * 하한 미만이면 하한까지 키운다. 개수를 줄이고 하나를 크게 — 픽셀 아트의
+   * 원칙이다.
+   */
+  const MIN_R = 0.042;
+  let tooSmall = 0;
+  const guard = (r: number) => {
+    if (r < MIN_R) {
+      tooSmall++;
+      return MIN_R;
+    }
+    return r;
+  };
+
+  const sphere = (r: number, seg = 26) => new THREE.SphereGeometry(guard(r), seg, seg);
+  const capsule = (r: number, len: number) => new THREE.CapsuleGeometry(guard(r), len, 8, 20);
+  const cone = (r: number, h: number, seg = 12) => new THREE.ConeGeometry(guard(r), Math.max(h, MIN_R * 1.6), seg);
 
   /** 결정적 난수 — 무늬 배치에 쓴다 */
   let rs = seed * 9301 + 49297;
@@ -533,9 +562,6 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
       const h2 = at(0.76);
       const hl = noLine(add(sphere(r * 0.28, 12), z.sclera, [h2.x, h2.y + r * 0.36, h2.z]));
       hl.castShadow = false;
-      // 작은 보조 하이라이트 — 눈이 젖어 보인다
-      const h3 = at(0.74);
-      noLine(add(sphere(r * 0.13, 8), z.sclera, [h3.x, h3.y - r * 0.34, h3.z])).castShadow = false;
 
       // 윗눈꺼풀 — 눈매를 만든다
       const lid = at(0.1);
@@ -764,8 +790,9 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
   const addSurface = (get: (t: number) => THREE.Vector3, rad: (t: number) => number, from = 0.16, to = 0.86) => {
     const kind = body.surface;
     if (kind === 'slime') return;
-    const rows = kind === 'scale' ? 9 : kind === 'feather' ? 7 : 8;
-    const perRow = kind === 'scale' ? 5 : 4;
+    // 45개짜리 잔 디테일은 격자에서 얼룩이 된다. 개수를 절반으로 줄이고 키운다.
+    const rows = kind === 'scale' ? 5 : 4;
+    const perRow = 3;
     for (let i = 0; i < rows; i++) {
       const t = from + (i / (rows - 1)) * (to - from);
       const p = get(t);
@@ -777,18 +804,18 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
         const pos = new THREE.Vector3(p.x, p.y + dir.y * r * 0.94, dir.z * r * 0.94);
         if (kind === 'scale') {
           // 어긋나게 겹치는 비늘판
-          const sc = add(new THREE.CylinderGeometry(r * 0.3, r * 0.24, r * 0.1, 6), z.mark, [pos.x, pos.y, pos.z]);
+          const sc = add(new THREE.CylinderGeometry(r * 0.46, r * 0.38, r * 0.12, 6), z.mark, [pos.x, pos.y, pos.z]);
           orient(sc, dir);
           sc.rotateX(0.3);
           sc.userData.noOutline = true;
         } else if (kind === 'rock') {
-          const ch = add(new THREE.DodecahedronGeometry(r * 0.26, 0), z.mark, [pos.x, pos.y, pos.z], [
+          const ch = add(new THREE.DodecahedronGeometry(r * 0.4, 0), z.mark, [pos.x, pos.y, pos.z], [
             (i * 7) % 3, (j * 5) % 3, 0,
           ]);
           ch.userData.noOutline = true;
         } else {
           // 털뭉치·깃 — 뒤로 눕는 뾰족한 조각이 실루엣을 깬다
-          const tuft = add(cone(r * 0.2, r * 0.62, 5), i % 2 ? z.mark : z.base, [pos.x, pos.y, pos.z]);
+          const tuft = add(cone(r * 0.3, r * 0.9, 5), i % 2 ? z.mark : z.base, [pos.x, pos.y, pos.z]);
           orient(tuft, dir);
           tuft.rotateZ(1.1);
           tuft.translateY(r * 0.18);
@@ -1179,18 +1206,14 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
       const tongue = add(sphere(headR * 0.13, 12), z.elem, [mouthX + headR * 0.05, mouthY - headR * 0.05, 0]);
       tongue.scale.set(1.1, 0.34, 0.8);
       // 윗니 — 벌린 입 위쪽에 줄지어 붙는다
-      // 처음엔 이빨을 크게 냈더니 주둥이 끝이 흰 덩어리로 뭉쳤다
-      for (const k of [-1.3, -0.45, 0.45, 1.3]) {
-        add(cone(headR * 0.032, headR * 0.1, 6), z.sclera, [
-          mouthX + headR * 0.16, mouthY + headR * 0.13, k * headR * 0.1,
+      // 이빨 4개(2px)를 2개로 줄이고 크게. 개수보다 크기가 읽힌다.
+      for (const k of [-0.9, 0.9]) {
+        add(cone(headR * 0.09, headR * 0.28, 6), z.sclera, [
+          mouthX + headR * 0.18, mouthY + headR * 0.1, k * headR * 0.14,
         ], [0, 0, Math.PI]);
       }
       // 아랫니
-      for (const k of [-0.85, 0.85]) {
-        add(cone(headR * 0.028, headR * 0.09, 6), z.sclera, [
-          mouthX + headR * 0.14, mouthY - headR * 0.14, k * headR * 0.1,
-        ]);
-      }
+
     } else {
       add(new THREE.TorusGeometry(headR * 0.16, 0.01, 6, 14, Math.PI), z.ink, [
         mouthX, mouthY, 0,
@@ -1200,11 +1223,7 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
 
     // 눈 — 포식자는 정면에 모이고, 초식·피식자는 옆으로 벌어진다
     face(headX, headY + headR * 0.18, 0, headR, A.eyeYaw, 0.2, headR * A.eyeSize * 1.18);
-    for (const side of [-1, 1]) {
-      add(capsule(0.02, headR * 0.3), z.mark, [
-        headX + headR * 0.42, headY + headR * 0.5, side * headR * 0.5,
-      ], [0, 0, 1.25]);
-    }
+
 
     /* ── 귀 ── */
     const es = (body.earScale ?? 1) * hs;
@@ -1288,12 +1307,11 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
           add(capsule(t * 0.56, span * 0.28), z.base, [
             anchor.x, pawY + span * 0.2, zz,
           ], [0, 0, front * 0.12]);
-          const paw = add(sphere(t * 1.0, 14), z.paw, [anchor.x + t * 0.5, pawY - 0.005, zz]);
-          paw.scale.set(1.3, 0.62, 0.95);
-          for (const k of [-1, 0, 1]) {
-            add(sphere(t * 0.32, 10), z.paw, [anchor.x + t * 1.2, pawY - 0.012, zz + k * t * 0.5]);
-            add(cone(t * 0.16, t * 0.42, 6), z.elem, [
-              anchor.x + t * 1.7, pawY - 0.016, zz + k * t * 0.5,
+          const paw = add(sphere(t * 1.15, 14), z.paw, [anchor.x + t * 0.6, pawY - 0.005, zz]);
+          paw.scale.set(1.45, 0.66, 1.05);
+          for (const k of [-0.6, 0.6]) {
+            add(cone(t * 0.34, t * 0.9, 6), z.elem, [
+              anchor.x + t * 1.7, pawY - 0.012, zz + k * t * 0.7,
             ], [0, 0, -Math.PI / 2]);
           }
         }
@@ -1301,11 +1319,12 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
     }
 
     // 등가시 / 등털
-    for (let i = 0; i < 6; i++) {
-      const t = 0.18 + (i / 5) * 0.6;
+    // 6개짜리 잔 가시를 4개로 줄이고 크게 — 실루엣을 깨야 의미가 있다
+    for (let i = 0; i < 4; i++) {
+      const t = 0.2 + (i / 3) * 0.55;
       const p = at(t);
-      add(cone(0.045 - i * 0.004, body.spikes ? 0.2 : 0.12, 6), body.spikes ? z.elem : z.mark, [
-        p.x, p.y + radiusOn(t) * 0.95, 0,
+      add(cone(0.075 - i * 0.006, body.spikes ? 0.3 : 0.17, 6), body.spikes ? z.elem : z.mark, [
+        p.x, p.y + radiusOn(t) * 0.92, 0,
       ], [0, 0, 0.18]);
     }
 
@@ -2191,6 +2210,7 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
    * 서로 녹아 버리던 게 이 화풍이 장난감처럼 보인 큰 이유였다.
    */
   addOutlines(g);
+  g.userData.tooSmall = tooSmall;
   return g;
 }
 
