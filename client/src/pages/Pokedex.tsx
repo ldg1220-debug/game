@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { PetSprite } from '../components/PetSprite';
-import { PetSprite3D } from '../components/PetSprite3D';
+import { PetArt } from '../components/PetArt';
 import { getRegion, getShape, isEvolvedForm, REGIONS } from '../lib/petData';
 import { growthTierLabel } from '../lib/petUtils';
 import { CORE_ELEMENTS, ELEMENT_LABEL, type CoreElement } from '../lib/gameTypes';
@@ -105,7 +105,7 @@ export default function Pokedex() {
                     <div className="flex justify-center">
                       {/* 미포획은 실루엣이라 평면 SVG가 맞고, 포획한 종만 3D로 보여준다 */}
                       {entry.caught ? (
-                        <PetSprite3D
+                        <PetArt
                           shapeId={entry.shapeId}
                           element={shape.elementBias[0]}
                           size={72}

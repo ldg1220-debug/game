@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { PetCard } from '../components/PetCard';
 import { ElementPointsBadge, ElementPointsBar } from '../components/ElementBadge';
-import { PetSprite3D } from '../components/PetSprite3D';
+import { PetArt } from '../components/PetArt';
 import { getShape } from '../lib/petData';
 import {
   availableSkillIds,
@@ -106,7 +106,7 @@ function PetDetail({ pet, inTeam, onClose }: { pet: PetInstance; inTeam: boolean
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="rounded-xl bg-ink-800/60 border border-white/5 p-1 shrink-0">
-              <PetSprite3D shapeId={pet.shapeId} element={dominantElement(pet.elementPoints)} size={96} seed={pet.shapeId} />
+              <PetArt shapeId={pet.shapeId} element={dominantElement(pet.elementPoints)} size={96} seed={pet.shapeId} />
             </div>
             <div className="min-w-0">
               {renaming ? (
@@ -234,7 +234,7 @@ function PetDetail({ pet, inTeam, onClose }: { pet: PetInstance; inTeam: boolean
         {evo && (
           <div className="panel p-3 space-y-2">
             <div className="flex items-center gap-2">
-              <PetSprite3D shapeId={evo.target} element={dominantElement(pet.elementPoints)} size={56} seed={evo.target} animated={false} />
+              <PetArt shapeId={evo.target} element={dominantElement(pet.elementPoints)} size={56} seed={evo.target} animated={false} />
               <div className="text-xs">
                 <p className="font-semibold">{getShape(evo.target).name}(으)로 진화</p>
                 <p className="text-[10px] text-slate-500">

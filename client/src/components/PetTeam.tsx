@@ -2,7 +2,7 @@ import { dominantElement, type PetInstance } from '../lib/gameTypes';
 import { getShape } from '../lib/petData';
 import { getMaxHp } from '../lib/petUtils';
 import { ElementPointsBadge } from './ElementBadge';
-import { PetSprite3D } from './PetSprite3D';
+import { PetArt } from './PetArt';
 
 export function PetTeam({
   team,
@@ -34,7 +34,7 @@ export function PetTeam({
             } ${fainted ? 'opacity-40' : ''}`}
           >
             <div className="flex justify-center">
-              <PetSprite3D shapeId={pet.shapeId} element={dominantElement(pet.elementPoints)} size={56} seed={pet.shapeId} animated={false} />
+              <PetArt shapeId={pet.shapeId} element={dominantElement(pet.elementPoints)} size={56} seed={pet.shapeId} animated={false} />
             </div>
             <div className="flex justify-center mb-1">
               <ElementPointsBadge points={pet.elementPoints} small max={2} />

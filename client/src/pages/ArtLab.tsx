@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { PetSprite3D, PET_BODIES, type PetPose } from '../components/PetSprite3D';
+import { PET_BODIES, type PetPose } from '../components/PetSprite3D';
+import { PetArt } from '../components/PetArt';
 import { PetSprite } from '../components/PetSprite';
 import { getShape, REGIONS } from '../lib/petData';
 import { CORE_ELEMENTS, ELEMENT_LABEL, type CoreElement } from '../lib/gameTypes';
@@ -129,7 +130,7 @@ export default function ArtLab() {
                     {/* 레퍼런스와 같은 조건에서 보려고 흰 바탕 위에 올린다 */}
                     <div className="flex items-center justify-center gap-1 grow rounded bg-white">
                       {show2d && <PetSprite shapeId={id} element={element} size={48} motion="idle" />}
-                      <PetSprite3D shapeId={id} element={element} size={size} pose={pose} seed={id} />
+                      <PetArt shapeId={id} element={element} size={size} pose={pose} seed={id} />
                     </div>
                     <p className="text-[11px] text-center text-slate-200 mt-1">{shape.name}</p>
                     <p className="text-[9px] text-center text-slate-500">

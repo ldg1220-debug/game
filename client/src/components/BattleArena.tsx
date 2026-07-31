@@ -3,7 +3,8 @@ import { getShape } from '../lib/petData';
 import type { BattleEffect, Combatant } from '../lib/battleEngine';
 import { ElementPointsBadge, StatusBadge } from './ElementBadge';
 import { type PetMotion } from './PetSprite';
-import { PetSprite3D, poseFromMotion } from './PetSprite3D';
+import { PetArt } from './PetArt';
+import { poseFromMotion } from './PetSprite3D';
 import { SkillParticles } from './SkillParticles';
 
 /** 턴 연출 단계 (가이드 4.5) */
@@ -129,7 +130,7 @@ function Battler({
           {unit.kind === 'tamer' ? (
             <TamerSprite size={80} motion={motion} flipped={flipped} />
           ) : (
-            <PetSprite3D
+            <PetArt
               shapeId={unit.shapeId!}
               element={dominantElement(unit.elementPoints)}
               size={92}
