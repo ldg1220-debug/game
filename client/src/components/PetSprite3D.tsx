@@ -96,13 +96,20 @@ export interface PetBody {
 let shared: {
   renderer: THREE.WebGLRenderer;
   scene: THREE.Scene;
-  camera: THREE.PerspectiveCamera;
+  camera: THREE.OrthographicCamera;
 } | null = null;
 
 function getShared() {
   if (shared) return shared;
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2.5));
+  /*
+   * 안티에일리어싱을 끈다.
+   *
+   * 지금까지 매끈한 3D로 렌더링했다. 그래서 비율·색·형상을 아무리 맞춰도
+   * 원본과 결이 같아질 수 없었다 — 원본은 픽셀 아트다. 낮은 해상도로
+   * 그린 뒤 보간 없이 확대해야 도트가 살아난다. 픽셀 비율도 1로 고정한다.
+   */
+  const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
+  renderer.setPixelRatio(1);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -160,9 +167,23 @@ function getShared() {
   scene.environment = envTex;
   scene.environmentIntensity = 0.5;
 
-  const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
-  camera.position.set(2.7, 1.5, 3.2);
-  camera.lookAt(0, 0.62, 0);
+  /*
+   * 아이소메트릭 정사영.
+   *
+   * 원본 스프라이트는 원근이 없는 등각 투영에 높은 앙각(three-quarter
+   * front)이다. 원근 카메라로 찍으면 가까운 쪽이 커져 도트가 흐트러진다.
+   */
+  // 정사영 프러스텀. 크면 펫이 작게 찍혀 도트 밀도가 낭비된다.
+  const S = 0.92;
+  const camera = new THREE.OrthographicCamera(-S, S, S, -S, 0.1, 100);
+  const AZ = Math.PI / 4;
+  const EL = 0.66;
+  camera.position.set(
+    Math.cos(AZ) * Math.cos(EL) * 8,
+    Math.sin(EL) * 8,
+    Math.sin(AZ) * Math.cos(EL) * 8,
+  );
+  camera.lookAt(0, 0.8, 0);
 
   shared = { renderer, scene, camera };
   return shared;
@@ -1933,6 +1954,50 @@ export function poseFromMotion(motion: string): PetPose {
 const FRAME_MS = 1000 / 30;
 
 /**
+ * 스프라이트 해상도.
+ *
+ * 이 크기로 그린 뒤 보간 없이 확대한다. 원본 스프라이트가 대략 이 정도
+ * 도트 밀도다. 더 올리면 매끈한 3D로, 더 내리면 뭉개진다.
+ */
+const PIX = 96;
+
+/** 픽셀화·색 계단화에 쓰는 저해상도 중간 캔버스 */
+let small: HTMLCanvasElement | null = null;
+function getSmall(): CanvasRenderingContext2D {
+  if (!small) {
+    small = document.createElement('canvas');
+    small.width = PIX;
+    small.height = PIX;
+  }
+  return small.getContext('2d', { willReadFrequently: true })!;
+}
+
+/**
+ * 색 계단화 + 알파 끊기.
+ *
+ * 3D 조명은 색이 연속으로 변해서 그라디언트가 곱게 깔린다. 픽셀 아트는
+ * 색 단계가 몇 개뿐이고 가장자리에 반투명 픽셀이 없다("Clean Edges").
+ * 채널을 단계로 스냅하고 알파를 0 아니면 255로 끊는다.
+ */
+const LEVELS = 7;
+function posterize(ctx: CanvasRenderingContext2D) {
+  const img = ctx.getImageData(0, 0, PIX, PIX);
+  const d = img.data;
+  const step = 255 / (LEVELS - 1);
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] < 110) {
+      d[i + 3] = 0;
+      continue;
+    }
+    d[i + 3] = 255;
+    d[i] = Math.round(d[i] / step) * step;
+    d[i + 1] = Math.round(d[i + 1] / step) * step;
+    d[i + 2] = Math.round(d[i + 2] / step) * step;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+/**
  * 정지 프레임 캐시.
  *
  * 도감을 3D로 바꾸자 42개 캔버스가 각자 애니메이션을 돌려 2fps가 나왔다.
@@ -1978,14 +2043,25 @@ export function PetSprite3D({
     io.observe(canvas);
     let last = 0;
 
-    const drawFrom = (src: CanvasImageSource) => {
+    const drawFrom = (src: CanvasImageSource, raw: boolean) => {
       ctx.save();
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (flipped) {
         ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
       }
-      ctx.drawImage(src, 0, 0, canvas.width, canvas.height);
+      // 보간을 끄지 않으면 확대할 때 도트가 뭉개져 다시 매끈한 3D가 된다
+      ctx.imageSmoothingEnabled = false;
+      if (raw) {
+        const sc = getSmall();
+        sc.clearRect(0, 0, PIX, PIX);
+        sc.imageSmoothingEnabled = false;
+        sc.drawImage(src, 0, 0, PIX, PIX);
+        posterize(sc);
+        ctx.drawImage(small!, 0, 0, canvas.width, canvas.height);
+      } else {
+        ctx.drawImage(src, 0, 0, canvas.width, canvas.height);
+      }
       ctx.restore();
     };
 
@@ -1993,7 +2069,7 @@ export function PetSprite3D({
     if (!animated) {
       const hit = stillCache.get(stillKey);
       if (hit) {
-        drawFrom(hit);
+        drawFrom(hit, false);
         return;
       }
     }
@@ -2011,7 +2087,7 @@ export function PetSprite3D({
     // 바닥 그림자 받이
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(6, 6),
-      new THREE.ShadowMaterial({ opacity: 0.34 }),
+      new THREE.ShadowMaterial({ opacity: 0.62 }),
     );
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
@@ -2050,19 +2126,21 @@ export function PetSprite3D({
         group.rotation.y = BASE_YAW + Math.sin(t * 3.4) * 0.25;
       }
 
-      renderer.setSize(size, size, false);
+      renderer.setSize(PIX, PIX, false);
       scene.add(group);
       renderer.render(scene, camera);
       scene.remove(group);
 
-      drawFrom(renderer.domElement);
+      drawFrom(renderer.domElement, true);
 
       if (!animated) {
         // 구운 프레임을 캐시에 복사해 두고 루프를 끝낸다
         const still = document.createElement('canvas');
-        still.width = size;
-        still.height = size;
-        still.getContext('2d')?.drawImage(renderer.domElement, 0, 0, size, size);
+        still.width = PIX;
+        still.height = PIX;
+        const sctx = still.getContext('2d')!;
+        sctx.imageSmoothingEnabled = false;
+        sctx.drawImage(small!, 0, 0);
         stillCache.set(stillKey, still);
         cancelAnimationFrame(raf);
       }

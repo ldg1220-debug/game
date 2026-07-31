@@ -124,7 +124,8 @@ export default function ArtLab() {
                 const t = traits(id);
                 return (
                   <div key={id} className="panel p-2 flex flex-col">
-                    <div className="flex items-center justify-center gap-1 grow">
+                    {/* 레퍼런스와 같은 조건에서 보려고 흰 바탕 위에 올린다 */}
+                    <div className="flex items-center justify-center gap-1 grow rounded bg-white">
                       {show2d && <PetSprite shapeId={id} element={element} size={48} motion="idle" />}
                       <PetSprite3D shapeId={id} element={element} size={size} pose={pose} seed={id} />
                     </div>
