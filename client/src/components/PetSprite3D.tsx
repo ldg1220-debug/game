@@ -648,7 +648,14 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
         shape.quadraticCurveTo(span * 0.72, span * 0.22, span * 0.55, -span * 0.14);
         shape.quadraticCurveTo(span * 0.44, span * 0.1, span * 0.26, -span * 0.22);
         shape.quadraticCurveTo(span * 0.14, span * 0.02, 0, 0);
-        const w = new THREE.Mesh(new THREE.ShapeGeometry(shape, 28), membraneMat);
+        /*
+         * ShapeGeometry는 두께가 0이라 등각 시점에서 종잇장으로 찍혔다.
+         * 압출해서 부피를 준다 — 모서리가 생겨야 날개로 읽힌다.
+         */
+        const w = new THREE.Mesh(
+          new THREE.ExtrudeGeometry(shape, { depth: span * 0.045, bevelEnabled: true, bevelSize: span * 0.012, bevelThickness: span * 0.012, bevelSegments: 1, curveSegments: 10 }),
+          membraneMat,
+        );
         w.castShadow = true;
         wing.add(w);
 
@@ -680,6 +687,8 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
       // 어깨에 붙이고 바깥으로 편다. 살짝 뒤로 젖혀 앞을 가리지 않게.
       wing.position.set(sx, sy, side * 0.18);
       wing.rotation.set(0, (side * -Math.PI) / 2 + side * 0.42, 0.24);
+      // 날개는 크기 보정에서 뺀다. 같이 재면 날개가 프레임을 먹고 몸이 작아진다.
+      wing.traverse((o) => { o.userData.noFrame = true; });
       g.add(wing);
     }
   };
@@ -697,7 +706,8 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
     for (let i = 0; i < N; i++) {
       const t = i / (N - 1);
       // 가운데가 가장 길고 양끝이 짧은 부채
-      const len = size * (0.55 + Math.sin(t * Math.PI) * 1.05);
+      // 볏이 머리보다 커서 얼굴을 덮었다
+      const len = size * (0.42 + Math.sin(t * Math.PI) * 0.62);
       const px = cx - back * t;
       const py = cy + size * 0.4;
       if (body.crest === 'flame') {
@@ -814,7 +824,8 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
     for (let i = 0; i <= N; i++) {
       const t = 0.15 + (i / N) * 0.68;
       const p = get(t);
-      const h = rad(t) * (0.6 + Math.sin((i / N) * Math.PI) * 2.4);
+      // 돛이 몸보다 커서 본체를 가렸다. 높이를 낮춘다.
+      const h = rad(t) * (0.3 + Math.sin((i / N) * Math.PI) * 1.0);
       pts.push(new THREE.Vector3(p.x, p.y + rad(t) * 0.85 + h, 0));
       // 지지 가시
       if (i % 2 === 0) {
@@ -834,11 +845,13 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
       const p = get(t);
       shape.lineTo(p.x - get(0.15).x, p.y + rad(t) * 0.8 - get(0.15).y);
     }
-    const mem = new THREE.Mesh(new THREE.ShapeGeometry(shape, 12), new THREE.MeshStandardMaterial({
-      color: new THREE.Color(pal.sub), roughness: 0.6, side: THREE.DoubleSide,
-    }));
-    mem.position.set(get(0.15).x, get(0.15).y, 0);
+    const mem = new THREE.Mesh(
+      new THREE.ExtrudeGeometry(shape, { depth: 0.05, bevelEnabled: false, curveSegments: 6 }),
+      new THREE.MeshStandardMaterial({ color: new THREE.Color(pal.sub), roughness: 0.6, side: THREE.DoubleSide }),
+    );
+    mem.position.set(get(0.15).x, get(0.15).y, -0.025);
     mem.castShadow = true;
+    mem.userData.noFrame = true;
     g.add(mem);
   };
 
@@ -848,8 +861,8 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
     const mat = new THREE.MeshStandardMaterial({ color: 0xe0567a, roughness: 0.45 });
     for (let i = 0; i <= 9; i++) {
       const t = i / 9;
-      const seg = add(sphere(size * (0.3 - t * 0.12), 12), mat, [
-        mx + size * (0.4 + t * 2.0),
+      const seg = add(sphere(size * (0.22 - t * 0.1), 12), mat, [
+        mx + size * (0.3 + t * 0.8),
         my - Math.sin(t * 1.9) * size * 0.5,
         0,
       ]);
@@ -1858,7 +1871,8 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
      * 삼켜서, 화면에는 눈·부리 없는 검은 물방울만 남았다. 어깨는 가늘고
      * 가슴(t≈0.35)이 가장 굵어야 새로 보인다.
      */
-    const TORSO = [0.52, 0.86, 1.12, 1.06, 0.78, 0.44];
+    // 어깨(t=0)를 더 좁혀야 머리가 몸에 묻히지 않는다
+    const TORSO = [0.34, 0.78, 1.12, 1.06, 0.78, 0.44];
     const torso = new THREE.Group();
     for (let i = 0; i <= 12; i++) {
       const t = i / 12;
@@ -1891,8 +1905,8 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
     // 어깨 끝(회전 후 위치)에서 머리 반지름만큼 더 띄운다
     const shX = Math.sin(tilt) * 0.42 * ph;
     const shY = 0.5 + Math.cos(tilt) * 0.42 * ph;
-    const hx = shX + headR * 0.85;
-    const hy = shY + headR * 0.72;
+    const hx = shX + headR * 0.95;
+    const hy = shY + headR * 0.95;
     const head = add(sphere(headR, 22), z.base, [hx, hy, 0]);
     head.scale.set(1, 0.96, 0.98);
     for (let i = 0; i <= 4; i++) {
@@ -2330,10 +2344,10 @@ const FRAME_MS = 1000 / 30;
 /**
  * 스프라이트 해상도.
  *
- * 이 크기로 그린 뒤 보간 없이 확대한다. 원본 스프라이트가 대략 이 정도
- * 도트 밀도다. 더 올리면 매끈한 3D로, 더 내리면 뭉개진다.
+ * 이 크기로 그린 뒤 보간 없이 확대한다. 96px에서는 날개·볏이 프레임을
+ * 먹어 작아진 본체가 뭉개졌다. 128px이면 얼굴과 발이 살아남는다.
  */
-const PIX = 96;
+const PIX = 128;
 
 /** 픽셀화·색 계단화에 쓰는 저해상도 중간 캔버스 */
 let small: HTMLCanvasElement | null = null;
