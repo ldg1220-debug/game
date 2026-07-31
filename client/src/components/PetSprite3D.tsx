@@ -22,7 +22,7 @@ export type Pattern = 'spots' | 'stripes' | 'none';
 
 /** 종별 체형. 프리미티브 조합의 파라미터. */
 export interface PetBody {
-  kind: 'quadruped' | 'blob' | 'bird' | 'shelled' | 'serpent' | 'golem';
+  kind: 'quadruped' | 'biped' | 'blob' | 'bird' | 'shelled' | 'serpent' | 'golem';
   surface: SurfaceKind;
   /** 몸통 길이·높이·폭 배율 */
   proportions: [number, number, number];
@@ -56,6 +56,17 @@ export interface PetBody {
   glow?: boolean;
   /** 버섯 갓 같은 머리 장식 */
   cap?: boolean;
+  /**
+   * 머리~목덜미 볏. 레퍼런스에서 실루엣을 가장 강하게 잡아주는 장식이다.
+   * flame은 불꽃, feather는 깃털 부채, fin은 물갈퀴 지느러미.
+   */
+  crest?: 'flame' | 'feather' | 'fin';
+  /** 등판 (스테고사우루스식 판) */
+  plates?: boolean;
+  /** 옆지느러미 */
+  fins?: boolean;
+  /** 긴 코 (매머드) */
+  trunk?: boolean;
 
   /*
    * ── 격(格)을 만드는 부위 ──
@@ -347,19 +358,36 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
       const c = new THREE.Vector3(hx, hy, hz).addScaledVector(d, R * 0.8);
       const at = (t: number) => c.clone().addScaledVector(d, r * t);
 
-      const socket = at(-0.15);
-      const sock = add(sphere(r * 1.3, 14), z.paw, [socket.x, socket.y, socket.z]);
+      /*
+       * 눈두덩 + 흰자 + 홍채 + 동공 + 하이라이트 + 윗눈꺼풀.
+       *
+       * 눈을 작게 줄였더니 표정이 사라져 전부 밋밋해졌다. 작은 썸네일에서
+       * 캐릭터를 살리는 건 눈이다. 크게 키우고, 검은 테두리(눈두덩)와
+       * 윗눈꺼풀을 넣어 배경색과 상관없이 윤곽이 잡히게 한다.
+       */
+      const socket = at(-0.2);
+      const sock = add(sphere(r * 1.34, 16), z.ink, [socket.x, socket.y, socket.z]);
       sock.lookAt(socket.clone().add(d));
-      sock.scale.set(1, 1, 0.45);
+      sock.scale.set(1, 1, 0.4);
 
       const e = at(0);
-      add(sphere(r, 20), z.sclera, [e.x, e.y, e.z]);
-      const i2 = at(0.44);
-      add(sphere(r * 0.66, 18), z.iris, [i2.x, i2.y, i2.z]);
-      const p2 = at(0.68);
-      add(sphere(r * 0.33, 14), z.ink, [p2.x, p2.y, p2.z]);
-      const h2 = at(0.74);
-      add(sphere(r * 0.2, 10), z.sclera, [h2.x, h2.y + r * 0.4, h2.z]);
+      add(sphere(r, 22), z.sclera, [e.x, e.y, e.z]);
+      const i2 = at(0.42);
+      add(sphere(r * 0.74, 20), z.iris, [i2.x, i2.y, i2.z]);
+      const p2 = at(0.66);
+      add(sphere(r * 0.42, 16), z.ink, [p2.x, p2.y, p2.z]);
+      const h2 = at(0.76);
+      const hl = add(sphere(r * 0.28, 12), z.sclera, [h2.x, h2.y + r * 0.36, h2.z]);
+      hl.castShadow = false;
+      // 작은 보조 하이라이트 — 눈이 젖어 보인다
+      const h3 = at(0.74);
+      add(sphere(r * 0.13, 8), z.sclera, [h3.x, h3.y - r * 0.34, h3.z]).castShadow = false;
+
+      // 윗눈꺼풀 — 눈매를 만든다
+      const lid = at(0.1);
+      const lidM = add(sphere(r * 1.06, 16), z.base, [lid.x, lid.y + r * 0.72, lid.z]);
+      lidM.lookAt(lid.clone().add(d));
+      lidM.scale.set(1, 0.62, 0.5);
     }
   };
 
@@ -499,6 +527,79 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
       wing.position.set(sx, sy, side * 0.18);
       wing.rotation.set(0, (side * -Math.PI) / 2 + side * 0.42, 0.24);
       g.add(wing);
+    }
+  };
+
+  /**
+   * 볏 — 머리에서 목덜미로 뻗는 부채.
+   *
+   * 레퍼런스에서 실루엣을 가장 크게 잡는 게 이거다. 어떤 개체는 볏이
+   * 머리보다 크다. 이쪽 모델이 밋밋했던 이유가 이런 "밖으로 뻗는" 요소가
+   * 없어서였다 — 전부 매끈한 덩어리에 작은 디테일만 붙어 있었다.
+   */
+  const addCrest = (cx: number, cy: number, size: number, back: number) => {
+    if (!body.crest) return;
+    const N = body.crest === 'fin' ? 7 : 9;
+    for (let i = 0; i < N; i++) {
+      const t = i / (N - 1);
+      // 가운데가 가장 길고 양끝이 짧은 부채
+      const len = size * (0.55 + Math.sin(t * Math.PI) * 1.05);
+      const px = cx - back * t;
+      const py = cy + size * 0.4;
+      if (body.crest === 'flame') {
+        for (const side of [-1, 0, 1]) {
+          if (side !== 0 && i % 2) continue;
+          const sp = add(cone(size * 0.15, len, 6), i % 2 ? z.elem : z.glow, [
+            px - len * 0.1, py + len * 0.42, side * size * 0.26,
+          ], [side * 0.3, 0, 0.4 + t * 0.55]);
+          sp.castShadow = false;
+        }
+      } else if (body.crest === 'feather') {
+        const fth = add(sphere(0.5, 10), i % 2 ? z.belly : z.elem, [px, py + len * 0.42, 0]);
+        fth.scale.set(size * 0.13, len * 0.5, size * 0.055);
+        fth.rotation.z = 0.35 + t * 0.6;
+      } else {
+        const fin = add(sphere(0.5, 10), z.belly, [px, py + len * 0.36, 0]);
+        fin.scale.set(size * 0.1, len * 0.46, size * 0.05);
+        fin.rotation.z = 0.3 + t * 0.4;
+      }
+    }
+  };
+
+  /** 등판 — 스테고사우루스식으로 좌우 어긋나게 세운다 */
+  const addPlates = (get: (t: number) => THREE.Vector3, rad: (t: number) => number) => {
+    if (!body.plates) return;
+    for (let i = 0; i < 7; i++) {
+      const t = 0.18 + (i / 6) * 0.62;
+      const p = get(t);
+      const h = rad(t) * (1.25 + Math.sin(t * Math.PI) * 0.85);
+      const plate = add(new THREE.CylinderGeometry(h * 0.48, h * 0.6, 0.035, 5), z.belly, [
+        p.x, p.y + rad(t) * 0.85 + h * 0.4, (i % 2 ? 1 : -1) * rad(t) * 0.22,
+      ]);
+      plate.rotation.set(Math.PI / 2, 0, i % 2 ? 0.18 : -0.18);
+    }
+  };
+
+  /** 옆지느러미 */
+  const addFins = (cx: number, cy: number, size: number) => {
+    if (!body.fins) return;
+    for (const side of [-1, 1]) {
+      const fin = add(sphere(0.5, 12), z.belly, [cx, cy, side * size * 1.05]);
+      fin.scale.set(size * 0.85, size * 0.22, size * 1.05);
+      fin.rotation.set(side * 0.5, 0, -0.28);
+    }
+  };
+
+  /** 긴 코 — 매머드는 코가 없으면 매머드로 안 읽힌다 */
+  const addTrunk = (cx: number, cy: number, size: number) => {
+    if (!body.trunk) return;
+    for (let i = 0; i <= 9; i++) {
+      const t = i / 9;
+      add(sphere(size * (0.3 - t * 0.17), 12), z.base, [
+        cx + Math.sin(t * 1.4) * size * 0.42,
+        cy - t * size * 1.5,
+        0,
+      ]);
     }
   };
 
@@ -756,7 +857,7 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
     addFangs(noseX - mLen * 0.18, noseY - headR * 0.18, hs);
 
     // 눈 — 포식자는 정면에 모이고, 초식·피식자는 옆으로 벌어진다
-    face(headX, headY + headR * 0.2, 0, headR, A.eyeYaw, 0.2, headR * A.eyeSize * 0.74);
+    face(headX, headY + headR * 0.18, 0, headR, A.eyeYaw, 0.2, headR * A.eyeSize * 1.18);
     for (const side of [-1, 1]) {
       add(capsule(0.02, headR * 0.3), z.mark, [
         headX + headR * 0.42, headY + headR * 0.5, side * headR * 0.5,
@@ -911,9 +1012,167 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
       core.castShadow = false;
     }
 
+    addCrest(headX - headR * 0.3, headY + headR * 0.3, headR * 1.15, 0.5 * pl);
+    addPlates(at, radiusOn);
+    addFins(at(0.45).x, at(0.45).y - radiusOn(0.45) * 0.3, radiusOn(0.45) * 1.1);
+    addTrunk(noseX + headR * 0.1, noseY - headR * 0.1, headR);
     addArmor(at(0.5).x, at(0.5).y, 0.8 * pl, radiusOn(0.5));
     addWings(at(0.34).x, at(0.34).y + radiusOn(0.34) * 0.7, 0.95);
     addAura(bodyY, Math.max(0.5 * pl, radiusOn(0.5) * 1.35));
+  } else if (body.kind === 'biped') {
+    /*
+     * 이족보행.
+     *
+     * 레퍼런스 32장 중 8장이 두 발로 선다 — 화염 도마뱀, 랩터, 수탉,
+     * 갑옷 거수. 이쪽 42종에는 이족이 하나도 없어서, 비율과 색을 아무리
+     * 맞춰도 원본과 결이 달랐다.
+     *
+     * 서 있는 몸은 네발과 균형이 완전히 다르다. 무거운 머리를 앞으로
+     * 내밀고 꼬리를 뒤로 뻗어 축을 맞춘다. 다리는 몸통 아래 한가운데,
+     * 팔은 짧고 몸에 붙는다.
+     */
+    const hipY = 0.5 * ph;
+    const bodyH = 0.62 * ph;
+    const bs = 0.3 * pw;
+
+    // 몸통 — 배가 굵고 어깨로 갈수록 좁아지며 앞으로 기운다
+    const lean = 0.3;
+    const TORSO = [1.15, 1.2, 1.0, 0.82];
+    const spinePt = (t: number) => new THREE.Vector3(
+      Math.sin(lean) * bodyH * t,
+      hipY + Math.cos(lean) * bodyH * t,
+      0,
+    );
+    const torsoR = (t: number) => {
+      const seg = t * (TORSO.length - 1);
+      const k = Math.min(TORSO.length - 2, Math.floor(seg));
+      return bs * (TORSO[k] + (TORSO[k + 1] - TORSO[k]) * (seg - k));
+    };
+    for (let i = 0; i <= 12; i++) {
+      const t = i / 12;
+      const p = spinePt(t);
+      const m = add(sphere(torsoR(t), 18), z.base, [p.x, p.y, 0]);
+      m.scale.set(1, 1, 0.9);
+      // 배 판 — 레퍼런스는 배가 확실히 밝은 다른 색이다
+      const b = add(sphere(torsoR(t) * 0.76, 14), z.belly, [p.x + torsoR(t) * 0.45, p.y, 0]);
+      b.scale.set(0.66, 1, 0.78);
+    }
+
+    /* 머리 — 전체 높이의 40% 가까이 되는 대두 */
+    const headR = 0.34 * ph * (body.head ?? 1);
+    const top = spinePt(1);
+    const headX = top.x + headR * 0.42;
+    const headY = top.y + headR * 0.62;
+    const skull = add(sphere(headR, 24), z.base, [headX, headY, 0]);
+    skull.scale.set(1.02, 0.94, 0.92);
+    // 목
+    for (let i = 0; i <= 3; i++) {
+      const t = i / 3;
+      add(sphere(bs * (0.62 - t * 0.1), 14), z.base, [
+        top.x + (headX - top.x) * t, top.y + (headY - top.y) * t - headR * 0.3, 0,
+      ]);
+    }
+
+    // 주둥이 — 앞으로 뻗는 쐐기
+    const mLen = headR * (0.5 + (body.snout ?? 0.5) * 1.1);
+    let noseX = headX;
+    let noseY = headY;
+    for (let i = 0; i <= 9; i++) {
+      const t = i / 9;
+      const r = headR * (0.5 - t * 0.28);
+      noseX = headX + headR * 0.5 + mLen * t;
+      noseY = headY - headR * 0.16 - mLen * t * 0.12;
+      const m = add(sphere(r, 14), t > 0.8 ? z.belly : z.base, [noseX, noseY, 0]);
+      m.scale.set(1, 0.92, 0.86);
+    }
+    add(sphere(headR * 0.075, 10), z.ink, [noseX + headR * 0.1, noseY + headR * 0.06, 0]);
+
+    // 벌린 입 + 이빨
+    const mx = noseX - mLen * 0.3;
+    const my = noseY - headR * 0.2;
+    const cav = add(sphere(headR * 0.22, 16), z.ink, [mx, my, 0]);
+    cav.scale.set(0.95, 0.6, 0.78);
+    for (const k of [-1.2, -0.4, 0.4, 1.2]) {
+      add(cone(headR * 0.03, headR * 0.1, 6), z.sclera, [
+        mx + headR * 0.14, my + headR * 0.12, k * headR * 0.09,
+      ], [0, 0, Math.PI]);
+    }
+    addFangs(mx, my, 1);
+
+    face(headX, headY + headR * 0.16, 0, headR, 0.42, 0.18, headR * 0.3);
+
+    /* 다리 — 굵고 짧다. 발이 크다. */
+    for (const side of [-1, 1]) {
+      const zz = side * bs * 0.62;
+      const span = hipY - 0.09;
+      const thigh = add(capsule(bs * 0.44, span * 0.4), z.base, [0.02, hipY - span * 0.24, zz], [0, 0, 0.18]);
+      thigh.scale.set(1, 1, 1.05);
+      add(capsule(bs * 0.32, span * 0.4), z.base, [-0.03, hipY - span * 0.62, zz], [0, 0, -0.16]);
+      const foot = add(sphere(bs * 0.46, 16), z.paw, [0.05, 0.075, zz]);
+      foot.scale.set(1.5, 0.5, 1.0);
+      for (const k of [-1, 0, 1]) {
+        add(sphere(bs * 0.17, 10), z.paw, [0.05 + bs * 0.5, 0.06, zz + k * bs * 0.24]);
+        add(cone(bs * 0.08, bs * 0.24, 6), z.elem, [
+          0.05 + bs * 0.78, 0.055, zz + k * bs * 0.24,
+        ], [0, 0, -Math.PI / 2]);
+      }
+    }
+
+    /* 팔 — 짧고 몸에 붙는다 */
+    for (const side of [-1, 1]) {
+      const sp = spinePt(0.82);
+      const zz = side * (torsoR(0.82) + bs * 0.16);
+      add(capsule(bs * 0.24, bs * 0.5), z.base, [sp.x + bs * 0.1, sp.y - bs * 0.42, zz], [0, 0, 0.5]);
+      add(capsule(bs * 0.18, bs * 0.42), z.base, [sp.x + bs * 0.42, sp.y - bs * 0.82, zz], [0, 0, -0.5]);
+      const hand = add(sphere(bs * 0.24, 12), z.paw, [sp.x + bs * 0.6, sp.y - bs * 1.05, zz]);
+      hand.scale.set(1, 1.1, 0.9);
+      for (const k of [-1, 0, 1]) {
+        add(cone(bs * 0.07, bs * 0.24, 6), z.elem, [
+          sp.x + bs * 0.72, sp.y - bs * 1.24, zz + k * bs * 0.14,
+        ], [0, 0, Math.PI - 0.3]);
+      }
+    }
+
+    /* 꼬리 — 뒤로 뻗어 앞으로 기운 상체와 축을 맞춘다 */
+    for (let i = 0; i <= 13; i++) {
+      const t = i / 13;
+      const r = bs * (0.72 - t * 0.6);
+      add(sphere(r, 14), i % 3 === 0 ? z.mark : z.base, [
+        -t * 0.92 * pl,
+        hipY - t * t * (hipY - 0.12) * 0.85,
+        0,
+      ]);
+    }
+
+    // 등가시
+    if (body.spikes) {
+      for (let i = 0; i < 6; i++) {
+        const t = 0.2 + (i / 5) * 0.7;
+        const p = spinePt(t);
+        add(cone(bs * 0.16, bs * 0.5, 6), z.elem, [
+          p.x - torsoR(t) * 0.5, p.y, 0,
+        ], [0, 0, -0.9]);
+      }
+    }
+
+    if (body.ears === 'pointed') {
+      for (const side of [-1, 1]) {
+        add(cone(headR * 0.24, headR * 0.72, 10), z.base, [
+          headX - headR * 0.28, headY + headR * 0.7, side * headR * 0.42,
+        ], [0, 0, side * 0.2]);
+      }
+    }
+    addHorns(headX, headY, headR * 3.2);
+    addCrest(headX - headR * 0.5, headY + headR * 0.34, headR * 1.2, 0.5 * ph);
+    addPlates((t) => spinePt(t), (t) => torsoR(t));
+    addCrown(headX, headY, headR);
+    addArmor(spinePt(0.6).x, spinePt(0.6).y, 0.3 * ph, torsoR(0.6));
+    addWings(spinePt(0.8).x - torsoR(0.8) * 0.5, spinePt(0.8).y, 1.0);
+    addAura(hipY + bodyH * 0.4, Math.max(0.42 * pw, torsoR(0.5) * 1.5));
+    if (body.glow) {
+      const core = add(sphere(0.12 * pw, 16), z.glow, [spinePt(0.4).x + torsoR(0.4) * 0.5, spinePt(0.4).y, 0]);
+      core.castShadow = false;
+    }
   } else if (body.kind === 'blob') {
     /*
      * 젤리 몸통.
@@ -973,7 +1232,7 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
      */
     const fy = 0.48 * h;
     const fr = radiusAt(0.48) / 0.8;
-    face(0, fy, 0, fr, 0.5, 0.16, radiusAt(0.48) * 0.17);
+    face(0, fy, 0, fr, 0.5, 0.16, radiusAt(0.48) * 0.26);
     const mouth = add(new THREE.TorusGeometry(0.07, 0.016, 6, 14, Math.PI), z.ink, [0, 0, 0], [Math.PI / 2, 0, Math.PI]);
     mouth.position.set(fr * 0.9, fy - fr * 0.42, 0);
   } else if (body.kind === 'shelled') {
@@ -1023,7 +1282,7 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
     const head = add(sphere(hr), z.base, [hx, 0.52, 0]);
     head.scale.set(1.08, 0.95, 0.95);
     add(sphere(0.03 * pw), z.ink, [hx + hr * 0.92, 0.49, 0]);
-    face(hx, 0.54, 0, hr, 0.5, 0.24);
+    face(hx, 0.54, 0, hr, 0.5, 0.24, hr * 0.34);
     addFangs(hx + hr * 0.8, 0.47, pw);
     if (body.horns) addHorns(hx - hr * 0.2, 0.56, 0.75 * pw);
 
@@ -1129,7 +1388,7 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
       add(sphere(headR * 0.05, 8), z.ink, [hx + headR * 0.72, hy + headR * 0.16, side * headR * 0.12]);
     }
 
-    face(hx, hy + headR * 0.16, 0, headR, upright ? 0.42 : 0.66, 0.14, headR * (upright ? 0.3 : 0.24));
+    face(hx, hy + headR * 0.16, 0, headR, upright ? 0.42 : 0.66, 0.14, headR * (upright ? 0.36 : 0.3));
     if (upright) {
       // 부엉이 귀깃
       for (const side of [-1, 1]) {
@@ -1316,7 +1575,7 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
     }
 
     // 얼굴 — 빛나는 눈만. 원소체에 코와 입은 어울리지 않는다.
-    face(0, headY, 0, gh, 0.5, 0.06, gh * 0.3);
+    face(0, headY, 0, gh, 0.5, 0.06, gh * 0.36);
     if (body.horns) addHorns(0, headY, gh * 3.2);
     addCrown(0, headY, gh);
     addArmor(0, H * 0.66, 0.42 * pl, shoulderR);
@@ -1354,7 +1613,7 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
     const head = add(sphere(0.2 * pw, 22), z.base, [hx, hy, hz]);
     head.scale.set(1.2, 0.8, 0.95);
     add(capsule(0.08, 0.12), z.belly, [hx + 0.14, hy - 0.03, hz], [0, 0, Math.PI / 2]);
-    face(hx, hy, hz, 0.2 * pw, 0.5, 0.26);
+    face(hx, hy, hz, 0.2 * pw, 0.5, 0.26, 0.2 * pw * 0.34);
     if (body.horns) addHorns(hx - 0.04, hy + 0.04, 0.7);
     // 갈라진 혀
     add(capsule(0.016, 0.12), z.elem, [hx + 0.26, hy - 0.05, hz], [0, 0, Math.PI / 2]);
@@ -1381,49 +1640,49 @@ export const PET_BODIES: Record<number, PetBody> = {
   1: { kind: 'quadruped', archetype: 'lagomorph', surface: 'fur', proportions: [0.82, 1.0, 1.0], legs: 0.8, ears: 'long', tail: 'puff', snout: 0.1, build: 'sturdy', presence: 0.9 },
   2: { kind: 'quadruped', archetype: 'canine', earScale: 1.25, surface: 'fur', proportions: [1.05, 0.98, 0.86], legs: 1.05, ears: 'pointed', tail: 'bushy', snout: 0.95, build: 'slim' },
   3: { kind: 'blob', surface: 'slime', proportions: [1, 1, 1], presence: 0.9 },
-  4: { kind: 'shelled', surface: 'scale', proportions: [1, 1, 1] },
+  4: { kind: 'shelled', surface: 'scale', proportions: [1, 1, 1], fins: true },
   5: { kind: 'bird', surface: 'feather', proportions: [1, 1, 0.85], head: 1.05, presence: 0.9 },
   6: { kind: 'blob', surface: 'slime', proportions: [0.8, 0.72, 0.72], glow: true, horns: 'spike', presence: 0.86 },
   7: { kind: 'quadruped', archetype: 'ursine', surface: 'fur', proportions: [0.9, 0.86, 1.05], legs: 0.45, ears: 'round', tail: 'puff', snout: 0.8, build: 'sturdy' },
   8: { kind: 'quadruped', archetype: 'feline', surface: 'fur', proportions: [1.0, 0.95, 0.82], legs: 1.1, ears: 'pointed', tail: 'thin', snout: 0.35, build: 'slim' },
-  9: { kind: 'quadruped', archetype: 'reptile', surface: 'scale', proportions: [1.1, 0.8, 0.88], legs: 0.5, ears: 'none', tail: 'lizard', snout: 0.8, spikes: true, fangs: true },
+  9: { kind: 'biped', surface: 'scale', proportions: [1.0, 0.98, 0.92], snout: 0.7, spikes: true, fangs: true, crest: 'flame', glow: true },
   10: { kind: 'bird', surface: 'feather', proportions: [1.05, 1.05, 0.92], head: 0.95, wings: 'feather' },
   11: { kind: 'quadruped', archetype: 'caprine', surface: 'fur', proportions: [1.0, 1.05, 0.8], legs: 1.45, ears: 'pointed', tail: 'puff', snout: 0.6, horns: 'crystal', build: 'slim' },
-  12: { kind: 'quadruped', archetype: 'canine', surface: 'fur', proportions: [1.14, 1.08, 1.02], legs: 1.24, ears: 'pointed', tail: 'bushy', snout: 0.8, mane: true, build: 'sturdy', fangs: true, spikes: true, presence: 1.04 },
-  13: { kind: 'bird', surface: 'feather', proportions: [0.95, 1.05, 1.1], head: 1.25, ears: 'pointed', glow: true, wings: 'feather', presence: 1.08 },
+  12: { kind: 'quadruped', archetype: 'canine', surface: 'fur', proportions: [1.14, 1.08, 1.02], legs: 1.24, ears: 'pointed', tail: 'bushy', snout: 0.8, mane: true, build: 'sturdy', fangs: true, crest: 'feather', presence: 1.06 },
+  13: { kind: 'bird', surface: 'feather', proportions: [0.95, 1.05, 1.1], head: 1.25, ears: 'pointed', glow: true, wings: 'feather', crest: 'feather', presence: 1.08 },
   14: { kind: 'shelled', surface: 'rock', proportions: [1.25, 1.25, 1.34], horns: 'spike', armor: true, aura: true, crown: true, fieryEyes: true, presence: 1.22 },
   15: { kind: 'quadruped', archetype: 'lagomorph', surface: 'fur', proportions: [0.88, 1.0, 0.9], legs: 1.15, ears: 'long', tail: 'puff', snout: 0.15, build: 'slim' },
-  16: { kind: 'quadruped', archetype: 'canine', earScale: 1.2, surface: 'fur', proportions: [1.08, 1.02, 0.92], legs: 1.08, ears: 'pointed', tail: 'bushy', snout: 0.95, spikes: true, build: 'slim', fangs: true, glow: true, presence: 1.02 },
+  16: { kind: 'quadruped', archetype: 'canine', earScale: 1.2, surface: 'fur', proportions: [1.08, 1.02, 0.92], legs: 1.08, ears: 'pointed', tail: 'bushy', snout: 0.95, build: 'slim', fangs: true, glow: true, crest: 'flame', presence: 1.04 },
   17: { kind: 'blob', surface: 'slime', proportions: [1.05, 1.1, 1.05], glow: true },
   18: { kind: 'shelled', surface: 'rock', proportions: [1.06, 1.06, 1.14], horns: 'spike', armor: true, presence: 1.08 },
   19: { kind: 'bird', surface: 'feather', proportions: [1.1, 0.92, 0.8], head: 0.9 },
   20: { kind: 'bird', surface: 'feather', proportions: [0.85, 0.85, 1.15], head: 0.95, glow: true },
   21: { kind: 'quadruped', archetype: 'ursine', surface: 'rock', proportions: [0.95, 0.9, 1.1], legs: 0.5, ears: 'round', tail: 'puff', snout: 0.75, build: 'sturdy' },
   // ─── 울창한 숲 ───
-  22: { kind: 'serpent', surface: 'scale', proportions: [1, 1, 1] },
+  22: { kind: 'serpent', surface: 'scale', proportions: [1, 1, 1], crest: 'fin' },
   23: { kind: 'blob', surface: 'slime', proportions: [1.1, 0.75, 1.15], cap: true },
-  24: { kind: 'quadruped', archetype: 'reptile', surface: 'scale', proportions: [1.32, 0.8, 0.98], legs: 0.42, ears: 'none', tail: 'lizard', snout: 1.0, spikes: true, build: 'sturdy', fangs: true, armor: true, presence: 1.04 },
-  25: { kind: 'quadruped', archetype: 'feline', surface: 'fur', proportions: [1.16, 1.02, 0.86], legs: 1.28, ears: 'round', tail: 'thin', snout: 0.5, pattern: 'spots', build: 'slim', fangs: true, presence: 1.02 },
+  24: { kind: 'quadruped', archetype: 'reptile', surface: 'scale', proportions: [1.32, 0.8, 0.98], legs: 0.42, ears: 'none', tail: 'lizard', snout: 1.0, build: 'sturdy', fangs: true, plates: true, presence: 1.06 },
+  25: { kind: 'quadruped', archetype: 'feline', surface: 'fur', proportions: [1.16, 1.02, 0.86], legs: 1.28, ears: 'round', tail: 'thin', snout: 0.5, pattern: 'stripes', build: 'slim', fangs: true, presence: 1.02 },
   26: { kind: 'golem', surface: 'rock', proportions: [1.05, 1.2, 1.02], horns: 'antler', glow: true, aura: true, fieryEyes: true, presence: 1.1 },
-  27: { kind: 'quadruped', archetype: 'ursine', surface: 'rock', proportions: [1.35, 1.3, 1.35], legs: 1.3, ears: 'none', tail: 'none', snout: 0.4, horns: 'antler', mane: true, build: 'sturdy', armor: true, aura: true, fangs: true, fieryEyes: true, presence: 1.24 },
+  27: { kind: 'biped', surface: 'rock', proportions: [1.2, 1.24, 1.26], head: 0.98, snout: 0.4, horns: 'antler', armor: true, aura: true, fangs: true, fieryEyes: true, crest: 'feather', presence: 1.26 },
   // ─── 험준한 산맥 ───
   28: { kind: 'quadruped', archetype: 'caprine', surface: 'fur', proportions: [0.95, 1.0, 0.95], legs: 1.15, ears: 'pointed', tail: 'puff', snout: 0.55, horns: 'curved', build: 'sturdy' },
   29: { kind: 'shelled', surface: 'rock', proportions: [1.05, 0.85, 1.15], horns: 'spike' },
-  30: { kind: 'bird', surface: 'feather', proportions: [1.18, 1.14, 1.08], head: 1.0, wings: 'feather', presence: 1.06 },
-  31: { kind: 'quadruped', archetype: 'ursine', surface: 'fur', proportions: [1.15, 1.3, 1.3], legs: 1.35, ears: 'round', tail: 'none', snout: 0.3, mane: true, build: 'sturdy', fangs: true, armor: false, presence: 1.12 },
-  32: { kind: 'quadruped', archetype: 'ursine', surface: 'rock', proportions: [1.4, 1.32, 1.4], legs: 1.35, ears: 'pointed', tail: 'bushy', snout: 0.7, horns: 'curved', mane: true, spikes: true, build: 'sturdy', armor: true, aura: true, crown: true, fangs: true, fieryEyes: true, presence: 1.26 },
+  30: { kind: 'bird', surface: 'feather', proportions: [1.18, 1.14, 1.08], head: 1.0, wings: 'feather', crest: 'feather', fangs: true, presence: 1.08 },
+  31: { kind: 'biped', surface: 'fur', proportions: [1.05, 1.16, 1.25], head: 1.05, snout: 0.25, fangs: true, presence: 1.14 },
+  32: { kind: 'biped', surface: 'rock', proportions: [1.25, 1.28, 1.3], head: 1.0, snout: 0.55, horns: 'curved', spikes: true, armor: true, aura: true, crown: true, fangs: true, fieryEyes: true, presence: 1.28 },
   // ─── 불타는 화산 ───
   33: { kind: 'shelled', surface: 'slime', proportions: [0.92, 0.92, 0.98], glow: true, horns: 'spike' },
   34: { kind: 'bird', surface: 'feather', proportions: [1.02, 1.02, 0.9], head: 0.95, wings: 'feather' },
   35: { kind: 'golem', surface: 'rock', proportions: [1.1, 1.05, 1.15], glow: true, fieryEyes: true, armor: true, presence: 1.12 },
-  36: { kind: 'bird', surface: 'feather', proportions: [1.05, 0.98, 1.0], head: 1.15, glow: true, horns: 'crystal', wings: 'feather', aura: true, fieryEyes: true, presence: 1.12 },
-  37: { kind: 'quadruped', archetype: 'ursine', surface: 'rock', proportions: [1.45, 1.35, 1.42], legs: 1.3, ears: 'pointed', tail: 'lizard', snout: 0.85, horns: 'spike', mane: true, spikes: true, glow: true, build: 'sturdy', wings: 'membrane', armor: true, aura: true, fangs: true, fieryEyes: true, presence: 1.28 },
+  36: { kind: 'bird', surface: 'feather', proportions: [1.05, 0.98, 1.0], head: 1.15, glow: true, wings: 'feather', aura: true, fieryEyes: true, crest: 'flame', presence: 1.14 },
+  37: { kind: 'biped', surface: 'rock', proportions: [1.3, 1.3, 1.32], head: 1.0, snout: 0.8, horns: 'spike', spikes: true, glow: true, wings: 'membrane', armor: true, aura: true, fangs: true, fieryEyes: true, crest: 'flame', presence: 1.3 },
   // ─── 신비한 빙산 ───
   38: { kind: 'quadruped', archetype: 'canine', earScale: 1.3, surface: 'fur', proportions: [1.0, 0.95, 0.9], legs: 1.05, ears: 'pointed', tail: 'bushy', snout: 0.9, build: 'slim' },
-  39: { kind: 'quadruped', archetype: 'ursine', surface: 'fur', proportions: [1.28, 1.24, 1.34], legs: 1.24, ears: 'round', tail: 'thin', snout: 1.0, horns: 'tusk', mane: true, build: 'sturdy', armor: true, presence: 1.1 },
+  39: { kind: 'quadruped', archetype: 'ursine', surface: 'fur', proportions: [1.28, 1.24, 1.34], legs: 1.24, ears: 'round', tail: 'thin', snout: 0.6, horns: 'tusk', trunk: true, mane: true, build: 'sturdy', presence: 1.12 },
   40: { kind: 'golem', surface: 'slime', proportions: [0.92, 1.0, 0.88], glow: true, horns: 'crystal', fieryEyes: true },
-  41: { kind: 'serpent', surface: 'scale', proportions: [1.3, 1.25, 1.25], spikes: true, horns: 'spike', wings: 'membrane', fangs: true, fieryEyes: true, presence: 1.14 },
-  42: { kind: 'bird', surface: 'feather', proportions: [1.1, 1.05, 1.1], head: 1.15, glow: true, wings: 'feather', crown: true, aura: true, fieryEyes: true, presence: 1.24 },
+  41: { kind: 'serpent', surface: 'scale', proportions: [1.3, 1.25, 1.25], spikes: true, horns: 'spike', fins: true, crest: 'fin', fangs: true, fieryEyes: true, presence: 1.16 },
+  42: { kind: 'bird', surface: 'feather', proportions: [1.1, 1.05, 1.1], head: 1.15, glow: true, wings: 'feather', crown: true, aura: true, fieryEyes: true, crest: 'fin', presence: 1.24 },
 };
 
 /*
