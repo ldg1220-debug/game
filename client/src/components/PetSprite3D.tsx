@@ -22,7 +22,7 @@ export type Pattern = 'spots' | 'stripes' | 'none';
 
 /** 종별 체형. 프리미티브 조합의 파라미터. */
 export interface PetBody {
-  kind: 'quadruped' | 'blob' | 'bird' | 'shelled' | 'serpent';
+  kind: 'quadruped' | 'blob' | 'bird' | 'shelled' | 'serpent' | 'golem';
   surface: SurfaceKind;
   /** 몸통 길이·높이·폭 배율 */
   proportions: [number, number, number];
@@ -295,7 +295,7 @@ function makeZones(body: PetBody, pal: PetPalette, seed: number): Zones {
 }
 
 /** 프리미티브를 조합해 몸을 만든다 */
-function buildPet(body: PetBody, pal: PetPalette, seed: number): THREE.Group {
+function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreElement): THREE.Group {
   const g = new THREE.Group();
   const z = makeZones(body, pal, seed);
   const [pl, ph, pw] = body.proportions;
@@ -1002,59 +1002,287 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number): THREE.Group {
     addCrown(0.7 * pl, 0.5, 0.19);
     addAura(0.48, Math.max(Rx, Rz) * 1.08);
   } else if (body.kind === 'bird') {
-    // 새는 몸이 서 있다. 네발과 실루엣이 확실히 갈리도록 세로로 세운다.
-    const b = add(sphere(0.34 * pw, 24), z.base, [0, 0.62, 0]);
-    b.scale.set(1, 1.16, 0.96);
-    const chest = add(sphere(0.27, 20), z.belly, [0.15, 0.58, 0.06]);
-    chest.scale.set(0.9, 1.18, 0.8);
-    addPattern(0, 0.66, 0.4, 0.34 * pw);
+    /*
+     * 조류.
+     *
+     * 이전에는 세로로 세운 계란 하나에 부리를 꽂았다. 새로 안 보이는 이유는
+     * 자세다. 실제 새는 몸통이 앞으로 기울어 가슴이 나오고 꼬리가 뒤로
+     * 올라가며, 다리는 몸통 한참 아래 뒤쪽에 붙는다. 부엉이만 몸통이 선다.
+     */
+    const upright = body.ears === 'pointed';
+    const tilt = upright ? 0.12 : 0.42;
+    const bs = 0.36 * pw;
 
-    const headR = 0.25 * (body.head ?? 1);
-    add(sphere(headR), z.base, [0.14, 1.0, 0]);
-    // 부리 (위아래 두 겹)
-    add(cone(0.085, 0.26, 10), z.elem, [0.42, 0.99, 0], [0, 0, -Math.PI / 2]);
-    add(cone(0.058, 0.15, 10), z.paw, [0.4, 0.93, 0], [0, 0, -Math.PI / 2]);
-    face(0.14, 1.0, 0, headR, 0.58, 0.14);
-    if (body.horns) addHorns(0.1, 1.02, 0.8);
-    if (body.ears === 'pointed') {
+    /*
+     * 몸통 — 어깨에서 꽁지로 내려가며 굵기가 변한다.
+     *
+     * 처음엔 위쪽이 가장 굵은 식으로 썼더니 어깨 구가 머리를 통째로
+     * 삼켜서, 화면에는 눈·부리 없는 검은 물방울만 남았다. 어깨는 가늘고
+     * 가슴(t≈0.35)이 가장 굵어야 새로 보인다.
+     */
+    const TORSO = [0.52, 0.86, 1.12, 1.06, 0.78, 0.44];
+    const torso = new THREE.Group();
+    for (let i = 0; i <= 12; i++) {
+      const t = i / 12;
+      const seg = t * (TORSO.length - 1);
+      const k = Math.min(TORSO.length - 2, Math.floor(seg));
+      const r = bs * (TORSO[k] + (TORSO[k + 1] - TORSO[k]) * (seg - k));
+      const m = new THREE.Mesh(sphere(r, 18), z.base);
+      m.position.set(0, 0.42 * ph - t * 0.76 * ph, 0);
+      m.scale.set(1, 1, 0.94);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      torso.add(m);
+      // 가슴·배는 밝게
+      if (t < 0.72) {
+        const b = new THREE.Mesh(sphere(r * 0.74, 14), z.belly);
+        b.position.set(r * 0.42, 0.42 * ph - t * 0.76 * ph, 0);
+        b.scale.set(0.7, 1, 0.86);
+        torso.add(b);
+      }
+    }
+    torso.position.set(0, 0.5, 0);
+    torso.rotation.z = -tilt;
+    g.add(torso);
+
+    /*
+     * 머리 — 몸통 앞 위쪽. 목은 짧게 하나로 잇는다.
+     * 부엉이류는 머리가 몸통에 거의 붙고 크다.
+     */
+    const headR = 0.26 * (body.head ?? 1) * pw;
+    // 어깨 끝(회전 후 위치)에서 머리 반지름만큼 더 띄운다
+    const shX = Math.sin(tilt) * 0.42 * ph;
+    const shY = 0.5 + Math.cos(tilt) * 0.42 * ph;
+    const hx = shX + headR * 0.85;
+    const hy = shY + headR * 0.72;
+    const head = add(sphere(headR, 22), z.base, [hx, hy, 0]);
+    head.scale.set(1, 0.96, 0.98);
+    for (let i = 0; i <= 4; i++) {
+      const t = i / 4;
+      const n = add(sphere(headR * (0.72 - t * 0.16), 14), z.base, [
+        hx + (shX - hx) * t,
+        hy + (shY - hy) * t - headR * 0.34,
+        0,
+      ]);
+      n.scale.set(1, 1, 0.92);
+    }
+
+    /*
+     * 부리 — 위아래 두 장이 끝에서 만난다. 맹금류는 위 부리 끝이 갈고리로
+     * 꺾인다. 이전엔 원뿔 하나라 당근처럼 보였다.
+     */
+    const bl = headR * (body.horns === 'crystal' ? 1.15 : 0.95);
+    const upper = add(cone(headR * 0.42, bl, 10), z.elem, [
+      hx + headR * 0.82, hy + headR * 0.05, 0,
+    ], [0, 0, -Math.PI / 2 - 0.12]);
+    upper.scale.set(1, 1, 0.78);
+    const lower = add(cone(headR * 0.3, bl * 0.68, 10), z.paw, [
+      hx + headR * 0.72, hy - headR * 0.16, 0,
+    ], [0, 0, -Math.PI / 2 + 0.1]);
+    lower.scale.set(1, 1, 0.72);
+    if (body.fangs || body.wings === 'feather') {
+      // 갈고리 부리 — 맹금류의 인상을 만든다
+      add(cone(headR * 0.2, headR * 0.34, 8), z.elem, [
+        hx + headR * (0.82 + bl / headR * 0.5), hy - headR * 0.06, 0,
+      ], [0, 0, Math.PI + 0.5]);
+    }
+    // 콧구멍(납막)
+    for (const side of [-1, 1]) {
+      add(sphere(headR * 0.05, 8), z.ink, [hx + headR * 0.72, hy + headR * 0.16, side * headR * 0.12]);
+    }
+
+    face(hx, hy + headR * 0.16, 0, headR, upright ? 0.42 : 0.66, 0.14, headR * (upright ? 0.3 : 0.24));
+    if (upright) {
       // 부엉이 귀깃
       for (const side of [-1, 1]) {
-        add(cone(0.06, 0.2, 8), z.mark, [0.06, 1.2, side * 0.13], [0, 0, side * 0.35]);
+        add(cone(headR * 0.24, headR * 0.8, 8), z.mark, [
+          hx - headR * 0.4, hy + headR * 0.9, side * headR * 0.5,
+        ], [0, 0, side * 0.35]);
+      }
+      // 안면반
+      const disc = add(sphere(headR * 0.92, 20), z.belly, [hx + headR * 0.3, hy + headR * 0.08, 0]);
+      disc.scale.set(0.34, 1, 1);
+    }
+
+    /*
+     * 접은 날개 — wings 플래그가 없는 종은 날개를 몸에 붙여 접는다.
+     * 이전에는 옆구리에 원반을 붙여 둥근 지느러미처럼 보였다.
+     */
+    if (!body.wings) {
+      for (const side of [-1, 1]) {
+        for (let i = 0; i < 5; i++) {
+          const t = i / 4;
+          const f = add(sphere(0.5, 10), i % 2 ? z.mark : z.base, [
+            -0.02 - t * 0.16 * pl,
+            0.62 - t * 0.3,
+            side * (bs * 0.92 - t * 0.04),
+          ]);
+          f.scale.set(bs * (0.62 - t * 0.12), bs * (0.5 - t * 0.06), bs * 0.16);
+          f.rotation.z = 0.5 + t * 0.25;
+        }
       }
     }
 
+    /* 꽁지깃 — 부채꼴로 펴서 뒤로 올린다 */
+    for (let i = -2; i <= 2; i++) {
+      const t = Math.abs(i) / 2;
+      const f = add(sphere(0.5, 10), i % 2 ? z.belly : z.mark, [
+        -0.26 * pl - 0.06,
+        0.3 + t * 0.03,
+        i * 0.055 * pw,
+      ]);
+      f.scale.set(0.34 * pl, 0.05, 0.055 * pw);
+      f.rotation.set(i * 0.12, 0, 0.42 - t * 0.08);
+    }
+
+    /* 다리 — 가는 비늘 다리에 앞발가락 3 + 뒷발가락 1 */
+    // 다리는 몸통 아래쪽 무게중심 근처에 붙는다
+    const legX = -Math.sin(tilt) * 0.1 * ph;
     for (const side of [-1, 1]) {
-      const w = add(sphere(0.33, 18), z.mark, [-0.06, 0.68, side * 0.33]);
-      w.scale.set(0.95, 0.58, 0.2);
-      w.rotation.z = side * 0.18;
-      // 날개 끝 깃 — 층지게 겹친다
-      for (let i = 0; i < 4; i++) {
-        add(capsule(0.034, 0.18 - i * 0.02), i % 2 ? z.belly : z.paw, [
-          -0.28 - i * 0.07, 0.62 - i * 0.04, side * (0.32 - i * 0.015),
-        ], [0, 0, 1.3]);
+      const lx = legX;
+      add(capsule(0.028 * pw, 0.14), z.paw, [lx, 0.24, side * 0.1 * pw]);
+      add(capsule(0.024 * pw, 0.1), z.paw, [lx + 0.03, 0.11, side * 0.1 * pw], [0, 0, -0.3]);
+      for (const k of [-1, 0, 1]) {
+        const toe = add(capsule(0.018 * pw, 0.08), z.paw, [
+          lx + 0.09, 0.035, side * 0.1 * pw + k * 0.035 * pw,
+        ], [0, k * 0.35, Math.PI / 2]);
+        toe.scale.set(1, 1, 1);
+        add(cone(0.012 * pw, 0.035, 6), z.elem, [
+          lx + 0.15, 0.03, side * 0.1 * pw + k * 0.045 * pw,
+        ], [0, 0, -Math.PI / 2]);
       }
+      // 뒷발가락
+      add(capsule(0.016 * pw, 0.05), z.paw, [lx - 0.05, 0.035, side * 0.1 * pw], [0, 0, Math.PI / 2]);
     }
-    // 꽁지깃
-    for (let i = -1; i <= 1; i++) {
-      const t = add(capsule(0.05, 0.3), z.mark, [-0.48, 0.54 + i * 0.02, i * 0.09], [0, 0, 1.15]);
-      t.scale.set(1, 1, 0.4);
-    }
-    for (const side of [-1, 1]) {
-      add(capsule(0.042, 0.16), z.paw, [0.04, 0.24, side * 0.12]);
-      const foot = add(sphere(0.07, 10), z.paw, [0.08, 0.09, side * 0.12], undefined, [1.2, 0.6, 1]);
-      foot.scale.set(1.3, 0.55, 1);
-      for (const t of [-1, 0, 1]) {
-        add(cone(0.018, 0.06, 6), z.elem, [0.15, 0.07, side * 0.12 + t * 0.04], [0, 0, -Math.PI / 2]);
-      }
-    }
+
     if (body.glow) {
-      const halo = add(new THREE.TorusGeometry(0.34, 0.03, 8, 28), z.glow, [0.05, 0.72, 0], [0.5, 0, 0.3]);
+      const halo = add(new THREE.TorusGeometry(0.36, 0.026, 8, 30), z.glow, [hx - 0.1, hy + headR * 0.5, 0], [0.42, 0, 0.28]);
       halo.castShadow = false;
+      halo.userData.noFrame = true;
     }
-    addWings(0, 0.72, 0.9);
-    addArmor(0, 0.66, 0.42, 0.34 * pw);
-    addCrown(0.14, 1.0, headR);
-    addAura(0.66, 0.62);
+    // 날개는 고정 좌표가 아니라 기울인 몸통의 실제 어깨에 붙인다
+    addWings(shX - 0.06, shY - bs * 0.5, 0.95);
+    addArmor(shX - 0.1, shY - bs * 0.8, 0.34, bs * 0.9);
+    addCrown(hx, hy, headR);
+    addAura(0.58, 0.6 * pw);
+  } else if (body.kind === 'golem') {
+    /*
+     * 원소 골렘.
+     *
+     * 곰 골격을 물려 쓰니 그냥 큰 곰이었다. 골렘은 살아 있는 원소 덩어리다.
+     * 몸을 반투명하게 만들고 안에 코어를 넣어 속이 비쳐 보이게 하고,
+     * 주위에 원소 조각을 띄운다. 형태는 속성이 정한다 — 불은 위로 솟는
+     * 화염, 물은 둥근 물방울, 지는 뭉툭한 바위, 풍은 가늘게 휘도는 소용돌이.
+     */
+    /*
+     * 속성별 몸 윤곽. 밑동 → 어깨 순의 굵기 배열이다.
+     *
+     * 처음엔 위로 갈수록 단순히 가늘어지게 했더니 천막 같은 원뿔이 나왔다.
+     * 골렘으로 읽히려면 밑동이 퍼지고 허리가 한 번 들어갔다가 어깨에서
+     * 다시 벌어져야 한다. 그 위에 머리를 따로 얹는다.
+     */
+    const FORM: Record<CoreElement, { prof: number[]; lift: number; shards: number; headR: number }> = {
+      // 불 — 위로 솟는 화염. 어깨가 좁고 끝이 혀처럼 흔들린다.
+      fire: { prof: [0.86, 0.98, 0.7, 0.62, 0.5, 0.3], lift: 1.28, shards: 10, headR: 0.24 },
+      // 물 — 둥근 물방울. 전체가 부드럽게 이어진다.
+      water: { prof: [0.94, 1.02, 0.84, 0.86, 0.66, 0.4], lift: 1.0, shards: 8, headR: 0.28 },
+      // 지 — 뭉툭한 바위. 어깨가 넓고 허리가 굵다.
+      earth: { prof: [1.0, 1.04, 0.92, 1.0, 0.72, 0.44], lift: 0.92, shards: 11, headR: 0.3 },
+      // 풍 — 가늘게 휘도는 소용돌이.
+      wind: { prof: [0.7, 0.82, 0.56, 0.5, 0.4, 0.24], lift: 1.2, shards: 9, headR: 0.22 },
+    };
+    const f = FORM[element] ?? FORM.earth;
+
+    /*
+     * 반투명 원소체. transmission을 쓰면 뒤가 비쳐 "덩어리"가 아니라
+     * "물질"로 읽힌다. 불투명한 바위 재질로는 절대 안 나오는 인상이다.
+     */
+    const bodyMat = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color(pal.main),
+      transmission: element === 'earth' ? 0.34 : 0.66,
+      thickness: 0.9,
+      ior: element === 'water' ? 1.33 : 1.2,
+      roughness: element === 'earth' ? 0.55 : 0.16,
+      metalness: 0,
+      clearcoat: 0.7,
+      clearcoatRoughness: 0.2,
+      emissive: new THREE.Color(pal.accent),
+      emissiveIntensity: element === 'fire' ? 0.5 : 0.16,
+      transparent: true,
+      opacity: 0.95,
+      side: THREE.DoubleSide,
+    });
+
+    const H = 1.15 * ph * f.lift;
+    const R = 0.46 * pw;
+    const profile: THREE.Vector2[] = [];
+    const STEPS = 34;
+    for (let i = 0; i <= STEPS; i++) {
+      const t = i / STEPS;
+      const seg = t * (f.prof.length - 1);
+      const k = Math.min(f.prof.length - 2, Math.floor(seg));
+      const w = f.prof[k] + (f.prof[k + 1] - f.prof[k]) * (seg - k);
+      // 불·풍은 끝이 혀처럼 흔들린다
+      const flicker = element === 'fire' || element === 'wind' ? 1 + Math.sin(t * 11) * 0.08 * t : 1;
+      profile.push(new THREE.Vector2(Math.max(0.006, R * w * flicker), t * H));
+    }
+    const shell = add(new THREE.LatheGeometry(profile, 44), bodyMat, [0, 0.02, 0]);
+    shell.castShadow = true;
+
+    // 머리 — 어깨 위에 따로 얹어야 눈이 몸에 묻히지 않는다
+    const gh = f.headR * pw;
+    const headY = H + gh * 0.5;
+    const gHead = add(sphere(gh, 22), bodyMat, [0, headY, 0]);
+    gHead.scale.set(1, 0.95, 0.96);
+
+    // 안에서 도는 코어 — 반투명 몸 너머로 비쳐 보인다
+    const core = add(sphere(0.19 * pw, 20), z.glow, [0, H * 0.5, 0]);
+    core.scale.set(1, 1.15, 1);
+    core.castShadow = false;
+
+    /*
+     * 팔 — 골렘이라면 팔이 있어야 골렘으로 읽힌다. 어깨에서 주먹으로
+     * 굵어지는 덩어리를 몸통과 같은 반투명 재질로 만든다.
+     */
+    const shoulderR = R * f.prof[3];
+    for (const side of [-1, 1]) {
+      for (let i = 0; i <= 5; i++) {
+        const t = i / 5;
+        const a = add(sphere(0.085 * pw + t * 0.045 * pw, 14), bodyMat, [
+          t * 0.08 * pw,
+          H * 0.72 - t * H * 0.4,
+          side * (shoulderR + 0.06 * pw + t * 0.1 * pw),
+        ]);
+        a.castShadow = true;
+      }
+      // 주먹 — 골렘은 손이 커야 골렘으로 보인다
+      add(sphere(0.2 * pw, 16), bodyMat, [0.08 * pw, H * 0.3, side * (shoulderR + 0.16 * pw)]);
+    }
+
+    /* 원소 조각 — 몸 주위를 도는 불티·얼음·바위 파편 */
+    for (let i = 0; i < f.shards; i++) {
+      const a = (i / f.shards) * Math.PI * 2;
+      const t = rnd();
+      const rad = R * (1.05 + rnd() * 0.3);
+      const sz = 0.05 + rnd() * 0.06;
+      const shard = add(
+        element === 'earth' || element === 'fire'
+          ? new THREE.DodecahedronGeometry(sz * pw, 0)
+          : new THREE.OctahedronGeometry(sz * pw, 0),
+        element === 'earth' ? z.paw : z.glow,
+        [Math.cos(a) * rad, H * (0.2 + t * 0.75), Math.sin(a) * rad],
+        [rnd() * 3, rnd() * 3, rnd() * 3],
+      );
+      shard.castShadow = false;
+      shard.userData.noFrame = true;
+    }
+
+    // 얼굴 — 빛나는 눈만. 원소체에 코와 입은 어울리지 않는다.
+    face(0, headY, 0, gh, 0.5, 0.06, gh * 0.3);
+    if (body.horns) addHorns(0, headY, gh * 3.2);
+    addCrown(0, headY, gh);
+    addArmor(0, H * 0.66, 0.42 * pl, shoulderR);
+    addAura(H * 0.5, R * 1.2);
   } else {
     /*
      * serpent — 이전엔 구 9개를 대충 뿌려 덩어리로 보였다.
@@ -1138,7 +1366,7 @@ export const PET_BODIES: Record<number, PetBody> = {
   23: { kind: 'blob', surface: 'slime', proportions: [1.1, 0.75, 1.15], cap: true },
   24: { kind: 'quadruped', archetype: 'reptile', surface: 'scale', proportions: [1.32, 0.8, 0.98], legs: 0.42, ears: 'none', tail: 'lizard', snout: 1.0, spikes: true, build: 'sturdy', fangs: true, armor: true, presence: 1.04 },
   25: { kind: 'quadruped', archetype: 'feline', surface: 'fur', proportions: [1.16, 1.02, 0.86], legs: 1.28, ears: 'round', tail: 'thin', snout: 0.5, pattern: 'spots', build: 'slim', fangs: true, presence: 1.02 },
-  26: { kind: 'blob', surface: 'rock', proportions: [1.1, 1.32, 1.05], horns: 'antler', glow: true, aura: true, fieryEyes: true, presence: 1.1 },
+  26: { kind: 'golem', surface: 'rock', proportions: [1.05, 1.2, 1.02], horns: 'antler', glow: true, aura: true, fieryEyes: true, presence: 1.1 },
   27: { kind: 'quadruped', archetype: 'ursine', surface: 'rock', proportions: [1.35, 1.3, 1.35], legs: 1.3, ears: 'none', tail: 'none', snout: 0.4, horns: 'antler', mane: true, build: 'sturdy', armor: true, aura: true, fangs: true, fieryEyes: true, presence: 1.24 },
   // ─── 험준한 산맥 ───
   28: { kind: 'quadruped', archetype: 'caprine', surface: 'fur', proportions: [0.95, 1.0, 0.95], legs: 1.15, ears: 'pointed', tail: 'puff', snout: 0.55, horns: 'curved', build: 'sturdy' },
@@ -1149,15 +1377,15 @@ export const PET_BODIES: Record<number, PetBody> = {
   // ─── 불타는 화산 ───
   33: { kind: 'shelled', surface: 'slime', proportions: [0.92, 0.92, 0.98], glow: true, horns: 'spike' },
   34: { kind: 'bird', surface: 'feather', proportions: [1.02, 1.02, 0.9], head: 0.95, wings: 'feather' },
-  35: { kind: 'quadruped', archetype: 'ursine', surface: 'rock', proportions: [1.2, 1.16, 1.3], legs: 1.0, ears: 'none', tail: 'none', snout: 0.35, spikes: true, glow: true, build: 'sturdy', armor: true, fieryEyes: true, presence: 1.1 },
-  36: { kind: 'bird', surface: 'feather', proportions: [1.15, 1.2, 1.05], head: 1.0, glow: true, horns: 'crystal', wings: 'feather', aura: true, fieryEyes: true, presence: 1.12 },
+  35: { kind: 'golem', surface: 'rock', proportions: [1.1, 1.05, 1.15], glow: true, fieryEyes: true, armor: true, presence: 1.12 },
+  36: { kind: 'bird', surface: 'feather', proportions: [1.05, 0.98, 1.0], head: 1.15, glow: true, horns: 'crystal', wings: 'feather', aura: true, fieryEyes: true, presence: 1.12 },
   37: { kind: 'quadruped', archetype: 'ursine', surface: 'rock', proportions: [1.45, 1.35, 1.42], legs: 1.3, ears: 'pointed', tail: 'lizard', snout: 0.85, horns: 'spike', mane: true, spikes: true, glow: true, build: 'sturdy', wings: 'membrane', armor: true, aura: true, fangs: true, fieryEyes: true, presence: 1.28 },
   // ─── 신비한 빙산 ───
   38: { kind: 'quadruped', archetype: 'canine', earScale: 1.3, surface: 'fur', proportions: [1.0, 0.95, 0.9], legs: 1.05, ears: 'pointed', tail: 'bushy', snout: 0.9, build: 'slim' },
   39: { kind: 'quadruped', archetype: 'ursine', surface: 'fur', proportions: [1.28, 1.24, 1.34], legs: 1.24, ears: 'round', tail: 'thin', snout: 1.0, horns: 'tusk', mane: true, build: 'sturdy', armor: true, presence: 1.1 },
-  40: { kind: 'blob', surface: 'slime', proportions: [0.95, 1.2, 0.9], glow: true, horns: 'crystal' },
+  40: { kind: 'golem', surface: 'slime', proportions: [0.92, 1.0, 0.88], glow: true, horns: 'crystal', fieryEyes: true },
   41: { kind: 'serpent', surface: 'scale', proportions: [1.3, 1.25, 1.25], spikes: true, horns: 'spike', wings: 'membrane', fangs: true, fieryEyes: true, presence: 1.14 },
-  42: { kind: 'bird', surface: 'feather', proportions: [1.2, 1.35, 1.15], head: 1.05, horns: 'crystal', glow: true, wings: 'feather', crown: true, aura: true, armor: true, fieryEyes: true, presence: 1.26 },
+  42: { kind: 'bird', surface: 'feather', proportions: [1.1, 1.05, 1.1], head: 1.15, glow: true, wings: 'feather', crown: true, aura: true, fieryEyes: true, presence: 1.24 },
 };
 
 /*
@@ -1280,7 +1508,7 @@ export function PetSprite3D({
     const pal = petPalette(shapeId, element);
 
     // 체형은 안쪽 그룹에 담고 크기 보정을 걸어, 바깥 그룹은 포즈 애니메이션에만 쓴다
-    const inner = buildPet(body, pal, seed + shapeId * 13);
+    const inner = buildPet(body, pal, seed + shapeId * 13, element);
     frame(inner, body.presence ?? 1);
     const group = new THREE.Group();
     group.add(inner);
