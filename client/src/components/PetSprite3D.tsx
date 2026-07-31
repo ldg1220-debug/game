@@ -393,11 +393,13 @@ function makeZones(body: PetBody, pal: PetPalette, seed: number): Zones {
       roughness: 0.4,
     }),
     iris: new THREE.MeshStandardMaterial({
-      color: pal.accent,
+      // 종 고유 홍채색. 원소 강조색을 쓰던 탓에 속성 하나 고르면 42종 눈이
+      // 전부 같은 색이 됐다.
+      color: pal.eye,
       roughness: 0.2,
       metalness: 0.1,
       // 보스는 눈이 빛난다. 작은 부위지만 격 차이가 가장 빨리 읽히는 곳이다.
-      emissive: new THREE.Color(body.fieryEyes ? pal.accent : 0x000000),
+      emissive: new THREE.Color(body.fieryEyes ? pal.eye : 0x000000),
       emissiveIntensity: body.fieryEyes ? 1.6 : 0,
     }),
     sclera: new THREE.MeshStandardMaterial({ color: 0xfdfaf2, roughness: 0.16 }),
@@ -481,8 +483,20 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
       noLine(add(sphere(r, 22), z.sclera, [e.x, e.y, e.z]));
       const i2 = at(0.42);
       noLine(add(sphere(r * 0.74, 20), z.iris, [i2.x, i2.y, i2.z]));
+      /*
+       * 동공 — 종마다 모양이 다르다. 지금까지 전부 같은 검은 구여서
+       * 눈이 42종 내내 똑같이 보였다.
+       *  slit       파충류·고양이과의 세로 슬릿
+       *  horizontal 초식동물의 가로 막대
+       *  dot        새의 작고 까만 점 (홍채가 거의 안 보인다)
+       *  round      포유류·용류의 둥근 동공
+       */
       const p2 = at(0.66);
-      noLine(add(sphere(r * 0.42, 16), z.ink, [p2.x, p2.y, p2.z]));
+      const pupilMesh = noLine(add(sphere(r * 0.44, 16), z.ink, [p2.x, p2.y, p2.z]));
+      pupilMesh.lookAt(p2.clone().add(d));
+      if (pal.pupil === 'slit') pupilMesh.scale.set(0.3, 1.5, 1);
+      else if (pal.pupil === 'horizontal') pupilMesh.scale.set(1.65, 0.34, 1);
+      else if (pal.pupil === 'dot') pupilMesh.scale.set(1.55, 1.55, 1);
       const h2 = at(0.76);
       const hl = noLine(add(sphere(r * 0.28, 12), z.sclera, [h2.x, h2.y + r * 0.36, h2.z]));
       hl.castShadow = false;
@@ -694,6 +708,50 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
       const fin = add(sphere(0.5, 12), z.belly, [cx, cy, side * size * 1.05]);
       fin.scale.set(size * 0.85, size * 0.22, size * 1.05);
       fin.rotation.set(side * 0.5, 0, -0.28);
+    }
+  };
+
+  /**
+   * 표면 디테일 — 실제 형상으로.
+   *
+   * 지금까지 비늘·털·깃털을 노멀맵으로만 흉내 냈다. 실루엣이 매끈해서
+   * 원본의 오돌토돌한 인상이 안 났다. 원본은 비늘 한 장, 털뭉치 하나가
+   * 실제로 삐져나와 있다.
+   */
+  const addSurface = (get: (t: number) => THREE.Vector3, rad: (t: number) => number, from = 0.16, to = 0.86) => {
+    const kind = body.surface;
+    if (kind === 'slime') return;
+    const rows = kind === 'scale' ? 9 : kind === 'feather' ? 7 : 8;
+    const perRow = kind === 'scale' ? 5 : 4;
+    for (let i = 0; i < rows; i++) {
+      const t = from + (i / (rows - 1)) * (to - from);
+      const p = get(t);
+      const r = rad(t);
+      for (let j = 0; j < perRow; j++) {
+        // 위쪽 절반에만 두른다. 아래는 배라 매끈해야 한다.
+        const a = -0.95 + (j / (perRow - 1)) * 1.9 + (i % 2) * 0.2;
+        const dir = new THREE.Vector3(0, Math.cos(a), Math.sin(a));
+        const pos = new THREE.Vector3(p.x, p.y + dir.y * r * 0.94, dir.z * r * 0.94);
+        if (kind === 'scale') {
+          // 어긋나게 겹치는 비늘판
+          const sc = add(new THREE.CylinderGeometry(r * 0.3, r * 0.24, r * 0.1, 6), z.mark, [pos.x, pos.y, pos.z]);
+          orient(sc, dir);
+          sc.rotateX(0.3);
+          sc.userData.noOutline = true;
+        } else if (kind === 'rock') {
+          const ch = add(new THREE.DodecahedronGeometry(r * 0.26, 0), z.mark, [pos.x, pos.y, pos.z], [
+            (i * 7) % 3, (j * 5) % 3, 0,
+          ]);
+          ch.userData.noOutline = true;
+        } else {
+          // 털뭉치·깃 — 뒤로 눕는 뾰족한 조각이 실루엣을 깬다
+          const tuft = add(cone(r * 0.2, r * 0.62, 5), i % 2 ? z.mark : z.base, [pos.x, pos.y, pos.z]);
+          orient(tuft, dir);
+          tuft.rotateZ(1.1);
+          tuft.translateY(r * 0.18);
+          tuft.userData.noOutline = true;
+        }
+      }
     }
   };
 
@@ -1137,6 +1195,7 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
       core.castShadow = false;
     }
 
+    addSurface(at, radiusOn);
     addCrest(headX - headR * 0.3, headY + headR * 0.3, headR * 1.15, 0.5 * pl);
     addPlates(at, radiusOn);
     addFins(at(0.45).x, at(0.45).y - radiusOn(0.45) * 0.3, radiusOn(0.45) * 1.1);
@@ -1296,6 +1355,7 @@ function buildPet(body: PetBody, pal: PetPalette, seed: number, element: CoreEle
       }
     }
     addHorns(headX, headY, headR * 3.2);
+    addSurface((t) => spinePt(t), (t) => torsoR(t), 0.12, 0.9);
     addCrest(headX - headR * 0.5, headY + headR * 0.34, headR * 1.2, 0.5 * ph);
     addPlates((t) => spinePt(t), (t) => torsoR(t));
     addCrown(headX, headY, headR);
