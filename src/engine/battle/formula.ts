@@ -165,26 +165,6 @@ export function fleeChance(fleeingSpd: number, opposingSpd: number, f: FormulaCo
   );
 }
 
-/* ─────────────── 포획 ─────────────── */
-
-/**
- * Phase 2의 기본 포획 확률.
- *
- * p = 기본포획률 * (1 - HP비율)^1.5 * 도구배수
- *
- * 레벨 역전 페널티와 캐릭터 매력 보정은 Phase 3에서 이 자리에 꽂는다.
- * 지금 반쯤 구현해두면 Phase 3에서 두 곳을 고쳐야 하므로 일부러 비워뒀다.
- */
-export function baseCaptureChance(
-  baseRate: number,
-  hpRatio: number,
-  toolMultiplier: number,
-  f: FormulaConfig,
-): number {
-  const p = baseRate * Math.pow(1 - clamp(hpRatio, 0, 1), f.capture.hpExponent) * toolMultiplier;
-  return clamp(p, f.capture.min, f.capture.max);
-}
-
 /* ─────────────── 버프 적용 ─────────────── */
 
 /** 버프/디버프는 곱연산으로 쌓인다. 합연산이면 스택 수에 따라 폭주한다. */

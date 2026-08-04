@@ -194,12 +194,7 @@ export const FormulaSchema = z.strictObject({
     min: z.number().min(0).max(1),
     max: z.number().gt(0).max(1),
   }),
-  capture: z.strictObject({
-    hpExponent: z.number().positive(),
-    min: z.number().gt(0).max(1),
-    max: z.number().gt(0).max(1),
-    escapeOnFail: z.number().min(0).max(1),
-  }),
+  capture: z.strictObject({ escapeOnFail: z.number().min(0).max(1) }),
 });
 
 /** 스키마만으로는 못 잡는 관계식. min>max 같은 건 게임을 조용히 망가뜨린다. */
@@ -215,7 +210,6 @@ function checkFormula(raw: unknown, errors: string[]): void {
     ['hit', c.hit.min, c.hit.max],
     ['damage.variance', c.damage.varianceMin, c.damage.varianceMax],
     ['flee', c.flee.min, c.flee.max],
-    ['capture', c.capture.min, c.capture.max],
     ['ailment.paralysisTurns', c.ailment.paralysisMinTurns, c.ailment.paralysisMaxTurns],
   ];
   for (const [name, lo, hi] of pairs) {
@@ -232,6 +226,79 @@ function checkFormula(raw: unknown, errors: string[]): void {
   }
   if (c.row.backTakenPhysical >= 1 || c.row.backDealtMelee >= 1) {
     errors.push('formula.row: 후열 보정이 감소가 아니다');
+  }
+}
+
+/* ─────────────── 성장·포획·충성도 상수 ─────────────── */
+
+/**
+ * growth.json — 육성 쪽 상수.
+ *
+ * 전투와 분리한 이유는 튜닝 주기가 다르기 때문이다. 전투 수식은 거의 안 건드리고,
+ * 성장 곡선과 포획률은 밸런스 시뮬레이터를 돌릴 때마다 움직인다.
+ */
+export const GrowthSchema = z.strictObject({
+  exp: z.strictObject({
+    coefficient: z.number().positive(),
+    exponent: z.number().positive(),
+    maxLevel: z.number().int().min(2).max(999),
+  }),
+  capture: z.strictObject({
+    hpExponent: z.number().positive(),
+    charmWeight: z.number().nonnegative(),
+    levelDecayPerLevel: z.number().gt(0).lt(1),
+    levelPenaltyMin: z.number().gt(0).max(1),
+    min: z.number().gt(0).max(1),
+    max: z.number().gt(0).max(1),
+  }),
+  loyalty: z.strictObject({
+    min: z.number().int().min(0),
+    max: z.number().int().min(1),
+    initialBase: z.number().nonnegative(),
+    initialHpWeight: z.number().nonnegative(),
+    initialCharmWeight: z.number().nonnegative(),
+    faintPenalty: z.number().positive(),
+    victoryBonus: z.number().positive(),
+    idleDecayPerDay: z.number().nonnegative(),
+    charmDropWeight: z.number().nonnegative(),
+    disobeyThreshold: z.number().positive(),
+    hostileThreshold: z.number().positive(),
+    fleeThreshold: z.number().positive(),
+    disobeyMaxChance: z.number().gt(0).max(1),
+    hostileMaxChance: z.number().gt(0).max(1),
+    fleeMaxChance: z.number().gt(0).max(1),
+  }),
+});
+
+function checkGrowthConfig(raw: unknown, errors: string[]): void {
+  const parsed = GrowthSchema.safeParse(raw);
+  if (!parsed.success) {
+    errors.push(...formatIssues('growth', parsed.error));
+    return;
+  }
+  const c = parsed.data;
+  if (c.capture.min > c.capture.max) {
+    errors.push(`growth.capture: min(${c.capture.min})이 max(${c.capture.max})보다 크다`);
+  }
+  if (c.capture.max >= 1) {
+    // 확실한 포획이 존재하면 "더 깎을까 지금 잡을까"의 긴장이 사라진다
+    errors.push('growth.capture: 포획 확률 상한이 1 이상이다');
+  }
+  const l = c.loyalty;
+  if (!(l.fleeThreshold < l.hostileThreshold && l.hostileThreshold < l.disobeyThreshold)) {
+    errors.push('growth.loyalty: 도주 < 적대 < 불복종 임계값 순서가 아니다');
+  }
+  if (l.disobeyThreshold > l.max) {
+    errors.push('growth.loyalty: 불복종 임계값이 최대 충성도보다 크다');
+  }
+  // 만피 포획이 곧바로 불복종 구간이면, 잡자마자 못 쓰는 펫이 된다
+  const worstInitial = l.initialBase;
+  if (worstInitial <= l.hostileThreshold) {
+    errors.push(`growth.loyalty: 초기 충성도(${worstInitial})가 적대 임계값 이하다`);
+  }
+  if (l.victoryBonus >= l.faintPenalty) {
+    // 회복이 하락보다 빠르면 관리라는 행위 자체가 사라진다
+    errors.push('growth.loyalty: 승리 회복량이 기절 하락폭 이상이다');
   }
 }
 
@@ -433,6 +500,7 @@ export function validateData(raw: {
   spirits: unknown;
   items: unknown;
   formula?: unknown;
+  growth?: unknown;
 }): ValidationResult {
   const errors: string[] = [];
   const result: ValidationResult = {
@@ -454,6 +522,7 @@ export function validateData(raw: {
   checkItemShape(result.items, errors);
   checkReferences(result);
   if (raw.formula !== undefined) checkFormula(raw.formula, errors);
+  if (raw.growth !== undefined) checkGrowthConfig(raw.growth, errors);
 
   return result;
 }

@@ -30,6 +30,7 @@ const result = validateData({
   spirits: readJson('spirits'),
   items: readJson('items'),
   formula: readJson('formula'),
+  growth: readJson('growth'),
 });
 
 if (result.errors.length > 0) {

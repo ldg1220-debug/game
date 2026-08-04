@@ -31,6 +31,7 @@ const raw = {
   spirits: load('spirits'),
   items: load('items'),
   formula: load('formula'),
+  growth: load('growth'),
 };
 const data = validateData(raw);
 

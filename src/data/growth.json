@@ -1,0 +1,32 @@
+{
+  "exp": {
+    "coefficient": 12,
+    "exponent": 2.6,
+    "maxLevel": 99
+  },
+  "capture": {
+    "hpExponent": 1.5,
+    "charmWeight": 0.002,
+    "levelDecayPerLevel": 0.88,
+    "levelPenaltyMin": 0.02,
+    "min": 0.01,
+    "max": 0.95
+  },
+  "loyalty": {
+    "min": 0,
+    "max": 100,
+    "initialBase": 50,
+    "initialHpWeight": 20,
+    "initialCharmWeight": 0.4,
+    "faintPenalty": 10,
+    "victoryBonus": 1,
+    "idleDecayPerDay": 2,
+    "charmDropWeight": 0.5,
+    "disobeyThreshold": 70,
+    "hostileThreshold": 30,
+    "fleeThreshold": 10,
+    "disobeyMaxChance": 0.5,
+    "hostileMaxChance": 0.25,
+    "fleeMaxChance": 0.3
+  }
+}

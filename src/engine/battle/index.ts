@@ -8,6 +8,7 @@
  * 전투 결과를 다시 계산하는 일은 없어야 한다.
  */
 
+import { createCaptureResolver } from '../capture';
 import { createRng, type RNG } from '../rng';
 import type { Ailment, Element, ElementPair, Skill, Stats } from '../types';
 import { createDefaultAI } from './ai';
@@ -15,7 +16,6 @@ import { BASIC_ATTACK_ID, resolveCatalog } from './catalog';
 import {
   ailmentChance,
   applyModifiers,
-  baseCaptureChance,
   clamp,
   critChance,
   damageVariance,
@@ -67,13 +67,12 @@ interface Unit extends Combatant {
   protectTurns: number;
 }
 
-const DEFAULT_CAPTURE_RESOLVER: CaptureResolver = ({ target, toolMultiplier, formula }) =>
-  baseCaptureChance(
-    target.captureBaseRate ?? 0,
-    target.hp / target.stats.hp,
-    toolMultiplier,
-    formula,
-  );
+/**
+ * Phase 3이 채운 자리. 레벨 역전 페널티와 매력 보정까지 들어간 완전한 공식이
+ * /src/engine/capture 에 있고, 전투는 그걸 주입받아 쓴다. 전투 엔진은 포획
+ * 공식을 모르고, 포획 모듈은 전투 상태를 모른다.
+ */
+const DEFAULT_CAPTURE_RESOLVER: CaptureResolver = createCaptureResolver();
 
 /* ─────────────── 엔진 ─────────────── */
 

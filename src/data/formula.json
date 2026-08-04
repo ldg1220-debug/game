@@ -55,9 +55,6 @@
     "max": 0.95
   },
   "capture": {
-    "hpExponent": 1.5,
-    "min": 0.01,
-    "max": 0.95,
     "escapeOnFail": 0.12
   }
 }

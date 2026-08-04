@@ -177,14 +177,16 @@ export interface FormulaConfig {
     poisonMaxHpRatio: number;
   };
   flee: { base: number; spdWeight: number; min: number; max: number };
-  capture: { hpExponent: number; min: number; max: number; escapeOnFail: number };
+  /** 포획 확률 공식은 /src/engine/capture 에 있다. 여기 남는 건 전투 흐름 규칙뿐이다. */
+  capture: { escapeOnFail: number };
 }
 
 /**
  * 포획 확률 계산을 밖에서 갈아끼우는 자리.
  *
- * Phase 2는 "전투 중 포획 커맨드가 돈다"까지만 책임진다. 레벨 역전 페널티·매력
- * 보정을 포함한 완전한 공식은 Phase 3(/src/engine/capture)이 여기에 꽂는다.
+ * 기본값은 /src/engine/capture 의 공식이다. 전투 엔진은 포획 공식을 모르고,
+ * 포획 모듈은 전투 상태를 모른다 — 둘을 잇는 어댑터가 거기 하나뿐이라
+ * 어느 쪽을 바꿔도 다른 쪽이 흔들리지 않는다.
  */
 export interface CaptureContext {
   target: CombatantView;
