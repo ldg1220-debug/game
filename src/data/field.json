@@ -1,0 +1,17 @@
+{
+  "movement": {
+    "tilesPerSecond": 5.0
+  },
+  "encounter": {
+    "jitterMin": 0.7,
+    "jitterMax": 1.3,
+    "graceSteps": 10,
+    "safeDecayPerStep": 0.2,
+    "warnThreshold": 0.65
+  },
+  "combatant": {
+    "energyBase": 20,
+    "energyPerLevel": 1.5,
+    "skillSlots": 4
+  }
+}

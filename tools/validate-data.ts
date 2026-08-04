@@ -31,6 +31,7 @@ const result = validateData({
   items: readJson('items'),
   formula: readJson('formula'),
   growth: readJson('growth'),
+  field: readJson('field'),
 });
 
 if (result.errors.length > 0) {

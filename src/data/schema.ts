@@ -302,6 +302,41 @@ function checkGrowthConfig(raw: unknown, errors: string[]): void {
   }
 }
 
+/* ─────────────── 필드 상수 ─────────────── */
+
+/** field.json — 이동 속도와 인카운터 게이지. */
+export const FieldSchema = z.strictObject({
+  movement: z.strictObject({ tilesPerSecond: z.number().positive() }),
+  encounter: z.strictObject({
+    jitterMin: ratio,
+    jitterMax: ratio,
+    graceSteps: z.number().int().nonnegative(),
+    safeDecayPerStep: z.number().gt(0).max(1),
+    warnThreshold: z.number().gt(0).lt(1),
+  }),
+  combatant: z.strictObject({
+    energyBase: z.number().nonnegative(),
+    energyPerLevel: z.number().nonnegative(),
+    skillSlots: z.number().int().min(1).max(8),
+  }),
+});
+
+function checkField(raw: unknown, errors: string[]): void {
+  const parsed = FieldSchema.safeParse(raw);
+  if (!parsed.success) {
+    errors.push(...formatIssues('field', parsed.error));
+    return;
+  }
+  const c = parsed.data;
+  if (c.encounter.jitterMin > c.encounter.jitterMax) {
+    errors.push('field.encounter: jitterMin이 jitterMax보다 크다');
+  }
+  // 유예가 너무 길면 인카운터가 사실상 사라지고, 게이지를 보여줄 이유도 없어진다
+  if (c.encounter.graceSteps > 60) {
+    errors.push(`field.encounter: 유예 걸음(${c.encounter.graceSteps})이 지나치게 길다`);
+  }
+}
+
 /* ─────────────── 스키마 ↔ 타입 동기화 ───────────────
  *
  * 스키마와 types.ts가 따로 놀면 검증은 통과하는데 코드가 터진다. 아래 단언이
@@ -501,6 +536,7 @@ export function validateData(raw: {
   items: unknown;
   formula?: unknown;
   growth?: unknown;
+  field?: unknown;
 }): ValidationResult {
   const errors: string[] = [];
   const result: ValidationResult = {
@@ -523,6 +559,7 @@ export function validateData(raw: {
   checkReferences(result);
   if (raw.formula !== undefined) checkFormula(raw.formula, errors);
   if (raw.growth !== undefined) checkGrowthConfig(raw.growth, errors);
+  if (raw.field !== undefined) checkField(raw.field, errors);
 
   return result;
 }

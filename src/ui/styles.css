@@ -1,0 +1,171 @@
+:root {
+  --ink: #10101a;
+  --panel: #1b1b28;
+  --panel-2: #242434;
+  --line: #38384d;
+  --text: #e6e4dd;
+  --muted: #9b9aad;
+  --gold: #e0b552;
+  --danger: #d2503f;
+  --ok: #6bbf6b;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--text);
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  border-radius: 6px;
+  padding: 8px 14px;
+  transition: border-color 120ms, background 120ms, transform 80ms;
+}
+button:hover:not(:disabled) { border-color: var(--gold); background: #2c2c40; }
+button:active:not(:disabled) { transform: translateY(1px); }
+button:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+}
+
+.title {
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.stage {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+  line-height: 0;
+}
+canvas { display: block; image-rendering: pixelated; }
+
+.panel {
+  width: min(100%, 960px);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.spread { justify-content: space-between; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.tiny { font-size: 11px; }
+
+/* 위험도 게이지 — 유저가 인카운터를 예측할 수 있게 하는 장치 */
+.gauge {
+  position: relative;
+  height: 8px;
+  flex: 1;
+  min-width: 120px;
+  background: #0d0d16;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.gauge > i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 140ms linear, background 300ms;
+}
+.gauge.safe > i { background: #3c6ea5; }
+.gauge.calm > i { background: #4f8f5a; }
+.gauge.uneasy > i { background: var(--gold); }
+.gauge.imminent > i { background: var(--danger); }
+
+.hpbar {
+  height: 6px;
+  background: #0d0d16;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.hpbar > i { display: block; height: 100%; background: var(--ok); transition: width 200ms; }
+.hpbar.low > i { background: var(--gold); }
+.hpbar.crit > i { background: var(--danger); }
+
+.unit {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 8px;
+  min-width: 132px;
+}
+.unit.down { opacity: 0.4; }
+.unit .name { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; }
+
+.log {
+  height: 132px;
+  overflow-y: auto;
+  font-size: 12px;
+  line-height: 1.65;
+  background: #14141f;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+.log p { margin: 0; }
+.log .hit { color: #f0a58a; }
+.log .heal { color: #8fd08f; }
+.log .info { color: var(--muted); }
+.log .big { color: var(--gold); }
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(8, 8, 14, 0.86);
+  line-height: 1.5;
+}
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 18px 20px;
+  width: min(420px, 88%);
+  text-align: center;
+}
+.card h2 { margin: 0 0 4px; font-size: 16px; color: var(--gold); }
+
+.stances { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+.stances button { text-align: left; padding: 9px 11px; }
+.stances b { display: block; font-size: 13px; }
+.stances span { font-size: 11px; color: var(--muted); }
+
+kbd {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 11px;
+  font-family: inherit;
+}

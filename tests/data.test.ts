@@ -32,6 +32,7 @@ const raw = {
   items: load('items'),
   formula: load('formula'),
   growth: load('growth'),
+  field: load('field'),
 };
 const data = validateData(raw);
 
