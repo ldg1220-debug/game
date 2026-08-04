@@ -1,0 +1,880 @@
+[
+  {
+    "id": "bouldershell",
+    "name": "바위등딱지",
+    "element": {
+      "primary": "earth",
+      "secondary": null
+    },
+    "baseStats": {
+      "hp": 48,
+      "atk": 9.9,
+      "def": 12.5,
+      "spd": 8.3
+    },
+    "growthRange": {
+      "min": {
+        "hp": 3,
+        "atk": 0.82,
+        "def": 0.8,
+        "spd": 0.82
+      },
+      "max": {
+        "hp": 4.4,
+        "atk": 1.12,
+        "def": 1.1,
+        "spd": 1.14
+      }
+    },
+    "skillPool": [
+      "strike",
+      "harden",
+      "stoneThrow"
+    ],
+    "captureBaseRate": 0.42,
+    "rarity": "common"
+  },
+  {
+    "id": "dustmole",
+    "name": "흙두더지",
+    "element": {
+      "primary": "earth",
+      "secondary": null
+    },
+    "baseStats": {
+      "hp": 40,
+      "atk": 11,
+      "def": 10,
+      "spd": 11.6
+    },
+    "growthRange": {
+      "min": {
+        "hp": 3,
+        "atk": 0.82,
+        "def": 0.8,
+        "spd": 0.82
+      },
+      "max": {
+        "hp": 4.4,
+        "atk": 1.12,
+        "def": 1.1,
+        "spd": 1.14
+      }
+    },
+    "skillPool": [
+      "strike",
+      "burrow",
+      "stoneThrow"
+    ],
+    "captureBaseRate": 0.42,
+    "rarity": "common"
+  },
+  {
+    "id": "cragox",
+    "name": "돌뿔소",
+    "element": {
+      "primary": "earth",
+      "secondary": "fire"
+    },
+    "baseStats": {
+      "hp": 50,
+      "atk": 12.1,
+      "def": 11,
+      "spd": 8.8
+    },
+    "growthRange": {
+      "min": {
+        "hp": 3.4,
+        "atk": 0.9,
+        "def": 0.88,
+        "spd": 0.9
+      },
+      "max": {
+        "hp": 4.8,
+        "atk": 1.2,
+        "def": 1.18,
+        "spd": 1.22
+      }
+    },
+    "skillPool": [
+      "gore",
+      "harden",
+      "quake",
+      "ironWall"
+    ],
+    "captureBaseRate": 0.3,
+    "rarity": "uncommon",
+    "evolveTo": {
+      "speciesId": "granitewarden",
+      "requiredLevel": 40,
+      "itemId": "evolveStone"
+    }
+  },
+  {
+    "id": "vinecarapace",
+    "name": "넝쿨거북",
+    "element": {
+      "primary": "earth",
+      "secondary": "water"
+    },
+    "baseStats": {
+      "hp": 46,
+      "atk": 9.4,
+      "def": 13,
+      "spd": 8.8
+    },
+    "growthRange": {
+      "min": {
+        "hp": 3.4,
+        "atk": 0.9,
+        "def": 0.88,
+        "spd": 0.9
+      },
+      "max": {
+        "hp": 4.8,
+        "atk": 1.2,
+        "def": 1.18,
+        "spd": 1.22
+      }
+    },
+    "skillPool": [
+      "strike",
+      "ironWall",
+      "regrow",
+      "bind"
+    ],
+    "captureBaseRate": 0.3,
+    "rarity": "uncommon"
+  },
+  {
+    "id": "granitewarden",
+    "name": "화강암거인",
+    "element": {
+      "primary": "earth",
+      "secondary": null
+    },
+    "baseStats": {
+      "hp": 55,
+      "atk": 12.6,
+      "def": 13.5,
+      "spd": 7.7
+    },
+    "growthRange": {
+      "min": {
+        "hp": 3.8,
+        "atk": 0.98,
+        "def": 0.95,
+        "spd": 0.98
+      },
+      "max": {
+        "hp": 5.2,
+        "atk": 1.28,
+        "def": 1.25,
+        "spd": 1.3
+      }
+    },
+    "skillPool": [
+      "quake",
+      "ironWall",
+      "guardBreak",
+      "earthAura"
+    ],
+    "captureBaseRate": 0.18,
+    "rarity": "rare"
+  },
+  {
+    "id": "terrasovereign",
+    "name": "대지의수호수",
+    "element": {
+      "primary": "earth",
+      "secondary": "wind"
+    },
+    "baseStats": {
+      "hp": 57,
+      "atk": 13.2,
+      "def": 13,
+      "spd": 9.9
+    },
+    "growthRange": {
+      "min": {
+        "hp": 4.2,
+        "atk": 1.05,
+        "def": 1.02,
+        "spd": 1.05
+      },
+      "max": {
+        "hp": 5.5,
+        "atk": 1.33,
+        "def": 1.3,
+        "spd": 1.35
+      }
+    },
+    "skillPool": [
+      "quake",
+      "earthAura",
+      "ironWall",
+      "guardBreak",
+      "regrow"
+    ],
+    "captureBaseRate": 0.08,
+    "rarity": "epic"
+  },
+  {
+    "id": "dewtail",
+    "name": "물방울꼬리",
+    "element": {
+      "primary": "water",
+      "secondary": null
+    },
+    "baseStats": {
+      "hp": 38,
+      "atk": 10.5,
+      "def": 9,
+      "spd": 12.6
+    },
+    "growthRange": {
+      "min": {
+        "hp": 3,
+        "atk": 0.82,
+        "def": 0.8,
+        "spd": 0.82
+      },
+      "max": {
+        "hp": 4.4,
+        "atk": 1.12,
+        "def": 1.1,
+        "spd": 1.14
+      }
+    },
+    "skillPool": [
+      "splash",
+      "mist",
+      "strike"
+    ],
+    "captureBaseRate": 0.42,
+    "rarity": "common"
+  },
+  {
+    "id": "brookotter",
+    "name": "여울수달",
+    "element": {
+      "primary": "water",
+      "secondary": null
+    },
+    "baseStats": {
+      "hp": 40,
+      "atk": 11.6,
+      "def": 8.5,
+      "spd": 12.6
+    },
+    "growthRange": {
+      "min": {
+        "hp": 3,
+        "atk": 0.82,
+        "def": 0.8,
+        "spd": 0.82
+      },
+      "max": {
+        "hp": 4.4,
+        "atk": 1.12,
+        "def": 1.1,
+        "spd": 1.14
+      }
+    },
+    "skillPool": [
+      "splash",
+      "strike",
+      "lull"
+    ],
+    "captureBaseRate": 0.42,
+    "rarity": "common"
+  },
+  {
+    "id": "abyssray",
+    "name": "심해가오리",
+    "element": {
+      "primary": "water",
+      "secondary": "wind"
+    },
+    "baseStats": {
+      "hp": 42,
+      "atk": 12.1,
+      "def": 9.5,
+      "spd": 13.2
+    },
+    "growthRange": {
+      "min": {
+        "hp": 3.4,
+        "atk": 0.9,
+        "def": 0.88,
+        "spd": 0.9
+      },
+      "max": {
+        "hp": 4.8,
+        "atk": 1.2,
+        "def": 1.18,
+        "spd": 1.22
+      }
+    },
+    "skillPool": [
+      "tidalWave",
+      "lull",
+      "venomSpine"
+    ],
+    "captureBaseRate": 0.3,
+    "rarity": "uncommon"
+  },
+  {
+    "id": "frostscale",
+    "name": "서리비늘",
+    "element": {
+      "primary": "water",
+      "secondary": null
+    },
+    "baseStats": {
+      "hp": 44,
+      "atk": 11.6,
+      "def": 11,
+      "spd": 11
+    },
+    "growthRange": {
+      "min": {
+        "hp": 3.4,
+        "atk": 0.9,
+        "def": 0.88,
+        "spd": 0.9
+      },
+      "max": {
+        "hp": 4.8,
+        "atk": 1.2,
+        "def": 1.18,
+        "spd": 1.22
+      }
+    },
+    "skillPool": [
+      "splash",
+      "frostArmor",
+      "mist",
+      "waterAura"
+    ],
+    "captureBaseRate": 0.3,
+    "rarity": "uncommon",
+    "evolveTo": {
+      "speciesId": "currentwyrm",
+      "requiredLevel": 40,
+      "itemId": "evolveStone"
+    }
+  },
+  {
+    "id": "currentwyrm",
+    "name": "해류이무기",
+    "element": {
+      "primary": "water",
+      "secondary": "earth"
+    },
+    "baseStats": {
+      "hp": 50,
+      "atk": 13.2,
+      "def": 10.5,
+      "spd": 12.1
+    },
+    "growthRange": {
+      "min": {
+        "hp": 3.8,
+        "atk": 0.98,
+        "def": 0.95,
+        "spd": 0.98
+      },
+      "max": {
+        "hp": 5.2,
+        "atk": 1.28,
+        "def": 1.25,
+        "spd": 1.3
+      }
+    },
+    "skillPool": [
+      "tidalWave",
+      "bind",
+      "waterAura",
+      "venomSpine"
+    ],
+    "captureBaseRate": 0.18,
+    "rarity": "rare"
+  },
+  {
+    "id": "abysslord",
+    "name": "심연의군주",
+    "element": {
+      "primary": "water",
+      "secondary": null
+    },
+    "baseStats": {
+      "hp": 55,
+      "atk": 13.8,
+      "def": 11.5,
+      "spd": 11.6
+    },
+    "growthRange": {
+      "min": {
+        "hp": 4.2,
+        "atk": 1.05,
+        "def": 1.02,
+        "spd": 1.05
+      },
+      "max": {
+        "hp": 5.5,
+        "atk": 1.33,
+        "def": 1.3,
+        "spd": 1.35
+      }
+    },
+    "skillPool": [
+      "tidalWave",
+      "waterAura",
+      "lull",
+      "guardBreak",
+      "mend"
+    ],
+    "captureBaseRate": 0.08,
+    "rarity": "epic"
+  },
+  {
+    "id": "emberfox",
+    "name": "불씨여우",
+    "element": {
+      "primary": "fire",
+      "secondary": null
+    },
+    "baseStats": {
+      "hp": 37,
+      "atk": 12.1,
+      "def": 8.2,
+      "spd": 12.6
+    },
+    "growthRange": {
+      "min": {
+        "hp": 3,
+        "atk": 0.82,
+        "def": 0.8,
+        "spd": 0.82
+      },
+      "max": {
+        "hp": 4.4,
+        "atk": 1.12,
+        "def": 1.1,
+        "spd": 1.14
+      }
+    },
+    "skillPool": [
+      "scorch",
+      "strike",
+      "flare"
+    ],
+    "captureBaseRate": 0.42,
+    "rarity": "common"
+  },
+  {
+    "id": "ashnewt",
+    "name": "잿빛도롱뇽",
+    "element": {
+      "primary": "fire",
+      "secondary": "earth"
+    },
+    "baseStats": {
+      "hp": 40,
+      "atk": 11.6,
+      "def": 9.5,
+      "spd": 10.8
+    },
+    "growthRange": {
+      "min": {
+        "hp": 3,
+        "atk": 0.82,
+        "def": 0.8,
+        "spd": 0.82
+      },
+      "max": {
+        "hp": 4.4,
+        "atk": 1.12,
+        "def": 1.1,
+        "spd": 1.14
+      }
+    },
+    "skillPool": [
+      "scorch",
+      "venomSpine",
+      "strike"
+    ],
+    "captureBaseRate": 0.42,
+    "rarity": "common"
+  },
+  {
+    "id": "blazeboar",
+    "name": "화염멧돼지",
+    "element": {
+      "primary": "fire",
+      "secondary": null
+    },
+    "baseStats": {
+      "hp": 48,
+      "atk": 13.2,
+      "def": 10,
+      "spd": 10.5
+    },
+    "growthRange": {
+      "min": {
+        "hp": 3.4,
+        "atk": 0.9,
+        "def": 0.88,
+        "spd": 0.9
+      },
+      "max": {
+        "hp": 4.8,
+        "atk": 1.2,
+        "def": 1.18,
+        "spd": 1.22
+      }
+    },
+    "skillPool": [
+      "gore",
+      "flare",
+      "frenzy"
+    ],
+    "captureBaseRate": 0.3,
+    "rarity": "uncommon"
+  },
+  {
+    "id": "magmasnail",
+    "name": "용암달팽이",
+    "element": {
+      "primary": "fire",
+      "secondary": "earth"
+    },
+    "baseStats": {
+      "hp": 50,
+      "atk": 10.5,
+      "def": 13,
+      "spd": 7.2
+    },
+    "growthRange": {
+      "min": {
+        "hp": 3.4,
+        "atk": 0.9,
+        "def": 0.88,
+        "spd": 0.9
+      },
+      "max": {
+        "hp": 4.8,
+        "atk": 1.2,
+        "def": 1.18,
+        "spd": 1.22
+      }
+    },
+    "skillPool": [
+      "scorch",
+      "ironWall",
+      "harden",
+      "fireAura"
+    ],
+    "captureBaseRate": 0.3,
+    "rarity": "uncommon",
+    "evolveTo": {
+      "speciesId": "plumewing",
+      "requiredLevel": 40,
+      "itemId": "evolveStone"
+    }
+  },
+  {
+    "id": "plumewing",
+    "name": "불꽃깃새",
+    "element": {
+      "primary": "fire",
+      "secondary": "wind"
+    },
+    "baseStats": {
+      "hp": 40,
+      "atk": 13.8,
+      "def": 9,
+      "spd": 14.9
+    },
+    "growthRange": {
+      "min": {
+        "hp": 3.8,
+        "atk": 0.98,
+        "def": 0.95,
+        "spd": 0.98
+      },
+      "max": {
+        "hp": 5.2,
+        "atk": 1.28,
+        "def": 1.25,
+        "spd": 1.3
+      }
+    },
+    "skillPool": [
+      "flare",
+      "gale",
+      "fireAura",
+      "frenzy"
+    ],
+    "captureBaseRate": 0.18,
+    "rarity": "rare"
+  },
+  {
+    "id": "pyrarch",
+    "name": "화산의패자",
+    "element": {
+      "primary": "fire",
+      "secondary": "earth"
+    },
+    "baseStats": {
+      "hp": 55,
+      "atk": 14.9,
+      "def": 11,
+      "spd": 11
+    },
+    "growthRange": {
+      "min": {
+        "hp": 4.2,
+        "atk": 1.05,
+        "def": 1.02,
+        "spd": 1.05
+      },
+      "max": {
+        "hp": 5.5,
+        "atk": 1.33,
+        "def": 1.3,
+        "spd": 1.35
+      }
+    },
+    "skillPool": [
+      "flare",
+      "fireAura",
+      "frenzy",
+      "guardBreak",
+      "quake"
+    ],
+    "captureBaseRate": 0.08,
+    "rarity": "epic"
+  },
+  {
+    "id": "breezefinch",
+    "name": "바람참새",
+    "element": {
+      "primary": "wind",
+      "secondary": null
+    },
+    "baseStats": {
+      "hp": 34,
+      "atk": 10.5,
+      "def": 8,
+      "spd": 13.8
+    },
+    "growthRange": {
+      "min": {
+        "hp": 3,
+        "atk": 0.82,
+        "def": 0.8,
+        "spd": 0.82
+      },
+      "max": {
+        "hp": 4.4,
+        "atk": 1.12,
+        "def": 1.1,
+        "spd": 1.14
+      }
+    },
+    "skillPool": [
+      "gale",
+      "strike",
+      "feint"
+    ],
+    "captureBaseRate": 0.42,
+    "rarity": "common"
+  },
+  {
+    "id": "meadowhare",
+    "name": "초원토끼",
+    "element": {
+      "primary": "wind",
+      "secondary": "earth"
+    },
+    "baseStats": {
+      "hp": 37,
+      "atk": 10.1,
+      "def": 8.8,
+      "spd": 13.4
+    },
+    "growthRange": {
+      "min": {
+        "hp": 3,
+        "atk": 0.82,
+        "def": 0.8,
+        "spd": 0.82
+      },
+      "max": {
+        "hp": 4.4,
+        "atk": 1.12,
+        "def": 1.1,
+        "spd": 1.14
+      }
+    },
+    "skillPool": [
+      "strike",
+      "feint",
+      "lull"
+    ],
+    "captureBaseRate": 0.42,
+    "rarity": "common"
+  },
+  {
+    "id": "gustwolf",
+    "name": "질풍늑대",
+    "element": {
+      "primary": "wind",
+      "secondary": null
+    },
+    "baseStats": {
+      "hp": 42,
+      "atk": 13.2,
+      "def": 9.2,
+      "spd": 13.8
+    },
+    "growthRange": {
+      "min": {
+        "hp": 3.4,
+        "atk": 0.9,
+        "def": 0.88,
+        "spd": 0.9
+      },
+      "max": {
+        "hp": 4.8,
+        "atk": 1.2,
+        "def": 1.18,
+        "spd": 1.22
+      }
+    },
+    "skillPool": [
+      "gale",
+      "frenzy",
+      "feint",
+      "taunt"
+    ],
+    "captureBaseRate": 0.3,
+    "rarity": "uncommon"
+  },
+  {
+    "id": "whirlstag",
+    "name": "회오리사슴",
+    "element": {
+      "primary": "wind",
+      "secondary": "water"
+    },
+    "baseStats": {
+      "hp": 44,
+      "atk": 11.6,
+      "def": 10,
+      "spd": 13.2
+    },
+    "growthRange": {
+      "min": {
+        "hp": 3.4,
+        "atk": 0.9,
+        "def": 0.88,
+        "spd": 0.9
+      },
+      "max": {
+        "hp": 4.8,
+        "atk": 1.2,
+        "def": 1.18,
+        "spd": 1.22
+      }
+    },
+    "skillPool": [
+      "gale",
+      "windAura",
+      "mend",
+      "feint"
+    ],
+    "captureBaseRate": 0.3,
+    "rarity": "uncommon",
+    "evolveTo": {
+      "speciesId": "stormfalcon",
+      "requiredLevel": 40,
+      "itemId": "evolveStone"
+    }
+  },
+  {
+    "id": "stormfalcon",
+    "name": "폭풍매",
+    "element": {
+      "primary": "wind",
+      "secondary": "water"
+    },
+    "baseStats": {
+      "hp": 40,
+      "atk": 14.3,
+      "def": 8.8,
+      "spd": 15.4
+    },
+    "growthRange": {
+      "min": {
+        "hp": 3.8,
+        "atk": 0.98,
+        "def": 0.95,
+        "spd": 0.98
+      },
+      "max": {
+        "hp": 5.2,
+        "atk": 1.28,
+        "def": 1.25,
+        "spd": 1.3
+      }
+    },
+    "skillPool": [
+      "gale",
+      "windAura",
+      "guardBreak",
+      "feint"
+    ],
+    "captureBaseRate": 0.18,
+    "rarity": "rare"
+  },
+  {
+    "id": "skysuzerain",
+    "name": "창공의주인",
+    "element": {
+      "primary": "wind",
+      "secondary": "fire"
+    },
+    "baseStats": {
+      "hp": 48,
+      "atk": 14.3,
+      "def": 10.5,
+      "spd": 15.4
+    },
+    "growthRange": {
+      "min": {
+        "hp": 4.2,
+        "atk": 1.05,
+        "def": 1.02,
+        "spd": 1.05
+      },
+      "max": {
+        "hp": 5.5,
+        "atk": 1.33,
+        "def": 1.3,
+        "spd": 1.35
+      }
+    },
+    "skillPool": [
+      "gale",
+      "windAura",
+      "frenzy",
+      "guardBreak",
+      "mend"
+    ],
+    "captureBaseRate": 0.08,
+    "rarity": "epic"
+  }
+]

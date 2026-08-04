@@ -70,7 +70,7 @@
 ## Phase 진행 상황
 
 - [x] **Phase 0** 프로젝트 셋업 · seeded RNG · Vitest · FastAPI 스켈레톤
-- [ ] Phase 1 데이터 모델과 밸런스 시트
+- [x] **Phase 1** 데이터 모델과 밸런스 시트 · zod 검증 게이트
 - [ ] Phase 2 전투 엔진 (가장 중요 — 건너뛰지 않는다)
 - [ ] Phase 3 성장 · 포획 · 충성도
 - [ ] Phase 4 맵 · 이동 · 인카운터
@@ -78,6 +78,25 @@
 - [ ] Phase 6 퀘스트 · NPC · 진화
 - [ ] Phase 7 저장 · 밸런스 시뮬레이터
 - [ ] Phase 8 멀티플레이 (선택)
+
+## 데이터 검증 게이트
+
+`src/data/*.json` 은 손으로 고칠 수 있으므로, 잘못된 수치가 배포까지 흘러가지
+않도록 빌드가 먼저 검증을 통과해야 한다.
+
+```
+pnpm gen:data       # 밸런스 시트에서 JSON 재생성
+pnpm validate:data  # 스키마 + 불변식 + 참조 무결성 검사
+pnpm build          # validate:data → tsc → vite build 순서. 위반 시 여기서 멈춘다
+```
+
+검사 층위는 `src/data/schema.ts` 에 있다.
+1. 스키마 — 필드/타입/범위 (zod, 모르는 필드도 거부)
+2. 불변식 — 성장률 상한, min≤max, 아키타입별 필수 필드, 정령 레벨 단조성
+3. 참조 무결성 — skillPool · evolveTo · spiritId
+
+`tests/data.test.ts` 는 통과 사례만이 아니라 **위반을 실제로 잡아내는지**도
+검사한다(상한 초과, 미지 필드, 없는 참조, 대가 없는 공격 버프 등).
 
 ## 기존 `client/` 디렉터리에 관해
 

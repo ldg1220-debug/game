@@ -5,21 +5,26 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "gen:data": "node tools/gen-data.mjs",
+    "validate:data": "vite-node tools/validate-data.ts",
+    "build": "pnpm validate:data && tsc -b && vite build",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "zod": "^4.4.3",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@types/node": "^26.1.2",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "~5.6.3",
     "vite": "^6.0.5",
+    "vite-node": "^6.0.0",
     "vitest": "^2.1.8"
   }
 }
