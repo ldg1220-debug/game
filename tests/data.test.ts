@@ -34,6 +34,8 @@ const raw = {
   growth: load('growth'),
   field: load('field'),
   economy: load('economy'),
+  quests: load('quests'),
+  dialogue: load('dialogue'),
 };
 const data = validateData(raw);
 

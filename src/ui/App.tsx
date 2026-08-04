@@ -7,6 +7,8 @@ import { growthScore } from '../engine/types';
 import { useEffect } from 'react';
 import { BattleScreen } from './BattleScreen';
 import { FieldScreen } from './FieldScreen';
+import { DexScreen } from './DexScreen';
+import { DialogueScreen } from './DialogueScreen';
 import { PackScreen } from './PackScreen';
 import { ShopScreen } from './ShopScreen';
 
@@ -108,6 +110,7 @@ function StancePrompt() {
 export default function App() {
   const screen = useGame((s) => s.screen);
   const openPack = useGame((s) => s.openPack);
+  const openDex = useGame((s) => s.openDex);
   const closeScreen = useGame((s) => s.closeScreen);
 
   // 소지품은 어디서나 열고 닫을 수 있어야 한다. 필드로 돌아가 메뉴를 찾는
@@ -119,11 +122,14 @@ export default function App() {
         e.preventDefault();
         if (useGame.getState().screen === 'field') openPack();
         else closeScreen();
+      } else if (e.code === 'KeyP') {
+        if (useGame.getState().screen === 'field') openDex();
+        else closeScreen();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [openPack, closeScreen]);
+  }, [openPack, openDex, closeScreen]);
 
   return (
     <div className="app">
@@ -134,6 +140,8 @@ export default function App() {
         {screen === 'stance' && <StancePrompt />}
         {screen === 'shop' && <ShopScreen />}
         {screen === 'pack' && <PackScreen />}
+        {screen === 'talk' && <DialogueScreen />}
+        {screen === 'dex' && <DexScreen />}
       </div>
 
       <PartyBar />

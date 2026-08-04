@@ -17,3 +17,28 @@ export function useCharacterView() {
     [character, equipment, inventory],
   );
 }
+
+/**
+ * 퀘스트·대화가 보는 좁은 창.
+ *
+ * characterView와 같은 이유로 memo가 필요하다 — Set과 클로저를 매번 새로
+ * 만들기 때문에 셀렉터로 직접 넘기면 무한 렌더가 된다.
+ */
+export function useWorldView() {
+  const character = useGame((s) => s.character);
+  const inventory = useGame((s) => s.inventory);
+  const visited = useGame((s) => s.visited);
+  const questLog = useGame((s) => s.questLog);
+  return useMemo(
+    () => ({
+      level: character.level,
+      itemCount: (id: string) => inventory.reduce((n, x) => (x.itemId === id ? n + x.qty : n), 0),
+      visited: new Set(visited),
+      questsDone: new Set(
+        Object.entries(questLog).filter(([, p]) => p.state === 'done').map(([id]) => id),
+      ),
+      questLog,
+    }),
+    [character.level, inventory, visited, questLog],
+  );
+}

@@ -4,6 +4,8 @@ import { buildTileset, type Tileset } from '../render/tileset';
 import { getMap, warpAt, zoneAt } from '../game/maps';
 import type { MoveInput } from '../game/movement';
 import { dangerLevel } from '../game/encounter';
+import { NPCS } from '../game/dialogue';
+import { questsFor } from '../game/quests';
 import { useGame } from '../game/store';
 
 /**
@@ -77,9 +79,23 @@ export function FieldScreen() {
       const s = useGame.getState();
       const map = getMap(s.player.mapId);
       const inZone = zoneAt(map, s.player.tile.x, s.player.tile.y) !== undefined;
+
+      // 표식은 매 프레임 다시 만든다. 퀘스트 상태가 바뀌면 즉시 반영돼야 하고,
+      // NPC는 몇 명뿐이라 비용이 없다.
+      const npcs = NPCS.filter((n) => n.mapId === map.id).map((n) => {
+        const rows = questsFor(s.questLog, n.id);
+        const mark = rows.some((q) => q.state === 'ready')
+          ? ('ready' as const)
+          : rows.some((q) => q.state === 'available')
+            ? ('available' as const)
+            : null;
+        return { x: n.x, y: n.y, name: n.name, mark };
+      });
+
       drawField(g, map, s.player, tilesetRef.current!, {
         danger: s.danger.gauge,
         dangerVisible: inZone && s.danger.grace === 0,
+        npcs,
       });
 
       const w = warpAt(map, s.player.tile.x, s.player.tile.y);

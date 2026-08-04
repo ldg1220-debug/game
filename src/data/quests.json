@@ -1,0 +1,86 @@
+[
+  {
+    "id": "firstSteps",
+    "name": "첫 걸음",
+    "giver": "elder",
+    "summary": "초원에 나가 야생 펫 셋을 상대해 보게. 밖이 어떤 곳인지 몸으로 알아야 해.",
+    "completion": "살아 돌아왔군. 이제 시작일세.",
+    "objectives": [{ "kind": "defeat", "count": 3 }],
+    "rewards": { "stones": 240, "items": [{ "itemId": "herbSmall", "qty": 3 }] }
+  },
+  {
+    "id": "firstCatch",
+    "name": "동료 하나",
+    "giver": "elder",
+    "summary": "밧줄을 쓸 줄 알아야 탐험가일세. 야생 펫을 하나 잡아 오게.",
+    "completion": "혼자 다니는 것보다 훨씬 나을 걸세.",
+    "requires": { "quests": ["firstSteps"] },
+    "objectives": [{ "kind": "capture", "count": 1 }],
+    "rewards": { "stones": 400, "items": [{ "itemId": "ropeFine", "qty": 2 }] }
+  },
+  {
+    "id": "marshErrand",
+    "name": "늪의 심부름",
+    "giver": "hunter",
+    "summary": "안개늪까지 다녀오고, 물 속성 놈들을 다섯 정리해 줘. 요즘 너무 불었어.",
+    "completion": "덕분에 숨통이 트였다. 이건 받아 둬.",
+    "requires": { "level": 7, "quests": ["firstSteps"] },
+    "objectives": [
+      { "kind": "visit", "mapId": "marsh" },
+      { "kind": "defeat", "count": 5, "element": "water" }
+    ],
+    "rewards": { "stones": 900, "exp": 600, "items": [{ "itemId": "herbLarge", "qty": 2 }] }
+  },
+  {
+    "id": "emberHunt",
+    "name": "불씨를 쫓아",
+    "giver": "hunter",
+    "summary": "잿빛 기슭에 불 속성이 몰려 있어. 넷만 줄여 줘.",
+    "completion": "네가 아니었으면 마을까지 내려왔을 거다.",
+    "requires": { "level": 12, "quests": ["marshErrand"] },
+    "objectives": [
+      { "kind": "visit", "mapId": "foothills" },
+      { "kind": "defeat", "count": 4, "element": "fire" }
+    ],
+    "rewards": { "stones": 1600, "exp": 1500, "items": [{ "itemId": "ropeMaster", "qty": 1 }] }
+  },
+  {
+    "id": "spiritRite",
+    "name": "깃드는 것들",
+    "giver": "shaman",
+    "summary": "정령은 사람이 아니라 물건에 깃든다. 정령이 깃든 물건을 하나 지니고 오너라.",
+    "completion": "이제 알겠느냐. 무엇을 쥐느냐가 곧 무엇을 쓰느냐다.",
+    "requires": { "level": 6 },
+    "objectives": [{ "kind": "collect", "count": 1, "itemId": "spearBone" }],
+    "rewards": { "stones": 300, "items": [{ "itemId": "featherCharm", "qty": 1 }] }
+  },
+  {
+    "id": "boundOfGrowth",
+    "name": "타고난 것",
+    "giver": "shaman",
+    "summary": "타고난 그릇은 바꿀 수 없다. 다만 다시 뽑을 수는 있지. 스무 레벨까지 키워 오너라.",
+    "completion": "그릇을 넘지는 못한다. 다만 그 안에서 다시 시작할 수는 있다.",
+    "requires": { "level": 14 },
+    "objectives": [{ "kind": "reach", "level": 20 }],
+    "rewards": {
+      "stones": 500,
+      "items": [
+        { "itemId": "rerollDraught", "qty": 1 },
+        { "itemId": "evolveStone", "qty": 1 }
+      ]
+    }
+  },
+  {
+    "id": "deepEcho",
+    "name": "메아리 속으로",
+    "giver": "elder",
+    "summary": "굴 안쪽에서 무언가 자란다는 소문이 있네. 희귀한 놈을 하나 잡아 확인해 주게.",
+    "completion": "그런 것들이 아직 남아 있었군.",
+    "requires": { "level": 20, "quests": ["firstCatch"] },
+    "objectives": [
+      { "kind": "visit", "mapId": "cavern" },
+      { "kind": "capture", "count": 1, "rarity": "rare" }
+    ],
+    "rewards": { "stones": 2500, "exp": 4000, "items": [{ "itemId": "catalyst", "qty": 1 }] }
+  }
+]

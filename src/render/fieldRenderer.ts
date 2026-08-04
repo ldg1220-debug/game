@@ -37,6 +37,68 @@ const FACING_OFFSET: Record<string, [number, number]> = {
   upLeft: [-0.7, -0.7], upRight: [0.7, -0.7], downLeft: [-0.7, 0.7], downRight: [0.7, 0.7],
 };
 
+/**
+ * NPC.
+ *
+ * 표식이 없으면 어디에 누가 있는지 알 방법이 걸어서 밟아보는 것뿐이다.
+ * 실제로 그렇게 만들어 봤고, 마을을 두 바퀴 돌게 된다.
+ */
+function drawNpc(g: CanvasRenderingContext2D, n: NpcMarker, px: number, py: number, s: number): void {
+  g.fillStyle = 'rgba(0,0,0,0.28)';
+  g.beginPath();
+  g.ellipse(px + s / 2, py + s - 4, s * 0.26, s * 0.1, 0, 0, Math.PI * 2);
+  g.fill();
+
+  // 로브 — 플레이어와 실루엣을 갈라 놓는다
+  g.fillStyle = '#4a4a68';
+  g.beginPath();
+  g.moveTo(px + s * 0.5, py + s * 0.34);
+  g.lineTo(px + s * 0.76, py + s * 0.88);
+  g.lineTo(px + s * 0.24, py + s * 0.88);
+  g.closePath();
+  g.fill();
+
+  g.fillStyle = '#e8bd94';
+  g.beginPath();
+  g.arc(px + s / 2, py + s * 0.3, s * 0.15, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = '#d8d8e4';
+  g.beginPath();
+  g.arc(px + s / 2, py + s * 0.26, s * 0.16, Math.PI, Math.PI * 2);
+  g.fill();
+  g.fillStyle = '#231a12';
+  for (const side of [-1, 1]) g.fillRect(px + s / 2 + side * s * 0.06 - 1, py + s * 0.31, 2, 2);
+
+  if (n.mark) {
+    const bob = Math.sin(performance.now() / 260) * 2;
+    const cx = px + s / 2;
+    const cy = py - 7 + bob;
+    // 받침을 깔지 않으면 표식이 뒤 타일에 묻힌다. 촌장이 마침 표지판 아래에
+    // 서 있었고, 느낌표가 표지판 무늬와 섞여 안 보였다.
+    g.fillStyle = 'rgba(12,12,20,0.82)';
+    g.beginPath();
+    g.arc(cx, cy, 9, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = n.mark === 'available' ? '#e0b552' : '#6bbf6b';
+    g.lineWidth = 1.5;
+    g.stroke();
+
+    g.font = 'bold 14px system-ui, sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillStyle = n.mark === 'available' ? '#e0b552' : '#6bbf6b';
+    g.fillText(n.mark === 'available' ? '!' : '?', cx, cy + 1);
+    g.textBaseline = 'alphabetic';
+  }
+
+  g.font = '10px system-ui, sans-serif';
+  g.textAlign = 'center';
+  g.fillStyle = 'rgba(0,0,0,0.55)';
+  g.fillRect(px + s / 2 - 20, py + s - 1, 40, 12);
+  g.fillStyle = '#e6e4dd';
+  g.fillText(n.name, px + s / 2, py + s + 8);
+}
+
 function drawPlayer(g: CanvasRenderingContext2D, px: number, py: number, size: number, facing: string, walking: boolean): void {
   const s = size;
   const bob = walking ? Math.sin(performance.now() / 90) * 1.2 : 0;
@@ -70,10 +132,20 @@ function drawPlayer(g: CanvasRenderingContext2D, px: number, py: number, size: n
   }
 }
 
+/** 맵 위에 서 있는 사람. 렌더러는 이름과 표식만 알면 된다. */
+export interface NpcMarker {
+  x: number;
+  y: number;
+  name: string;
+  /** 느낌표(받을 수 있음) / 물음표(보고 가능) / 없음 */
+  mark: 'available' | 'ready' | null;
+}
+
 export interface DrawOptions {
   /** 위험도 0~1. 화면 가장자리 붉은 기운으로 보여준다. */
   danger: number;
   dangerVisible: boolean;
+  npcs?: readonly NpcMarker[];
 }
 
 /**
@@ -143,6 +215,7 @@ export function drawField(
   const drawPlayerAt = () => drawPlayer(g, screenX(p.x), screenY(p.y), ts, player.facing, player.target !== null);
   let playerDrawn = false;
 
+  const npcs = opts.npcs ?? [];
   for (let y = Math.max(0, y0); y <= y1; y++) {
     if (!playerDrawn && playerRow < y) {
       drawPlayerAt();
@@ -153,6 +226,9 @@ export function drawField(
       if (kind === OBJECT.none) continue;
       const tile = tileset.object.get(kind);
       if (tile) g.drawImage(tile, screenX(x), screenY(y));
+    }
+    for (const n of npcs) {
+      if (n.y === y) drawNpc(g, n, screenX(n.x), screenY(n.y), ts);
     }
   }
   if (!playerDrawn) drawPlayerAt();

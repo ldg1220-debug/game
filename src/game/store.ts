@@ -20,11 +20,26 @@ import { createPetInstance, gainExp } from '../engine/growth';
 import { onFaint, onFeed, onVictory } from '../engine/loyalty';
 import { createRng, type RngState } from '../engine/rng';
 import { initialLoyalty } from '../engine/capture';
-import type { PetInstance } from '../engine/types';
+import { growthScore, type PetInstance } from '../engine/types';
 import { createDanger, dangerLevel, stepDanger, type DangerState } from './encounter';
 import { applyEquipment, availableSpirits, emptyEquipment, equip, equipmentWeight, unequip, type Equipment } from './equipment';
 import { ITEMS, addItem, removeItem, weightOf, type Inventory } from './inventory';
 import { CURRENCY, buy, sell, shopAt, stoneReward, type Shop } from './shop';
+import { entryNode, nodeOf, npcAt, visibleChoices, type DialogueAction, type DialogueNode, type DialogueWorld, type Npc } from './dialogue';
+import { emptyDex, markCaught, markSeen, type DexState } from './dex';
+import {
+  acceptQuest,
+  applyEvents,
+  initialLog,
+  refreshAvailability,
+  refreshCompletion,
+  turnInQuest,
+  QUEST_BY_ID,
+  type QuestEvent,
+  type QuestLog,
+  type WorldView,
+} from './quests';
+import { canEvolve, evolve, rerollGrowth, type EvolveMode } from '../engine/growth/evolve';
 import { getMap, warpAt, zoneAt } from './maps';
 import type { EncounterZone } from './mapTypes';
 import { createPlayer, stepMovement, type MoveInput, type PlayerState } from './movement';
@@ -68,11 +83,19 @@ export interface ResolvedBattle extends PendingBattle {
    * 파티 목록에 잡은 펫이 나타난다 — 결과를 미리 흘리는 셈이다. 재생이
    * 끝날 때 finishBattle이 적용한다.
    */
-  applied: { party: PetInstance[]; box: PetInstance[]; heroHp: number; inventory: Inventory; stones: number };
+  applied: {
+    party: PetInstance[];
+    box: PetInstance[];
+    heroHp: number;
+    inventory: Inventory;
+    stones: number;
+    questLog: QuestLog;
+    dex: DexState;
+  };
 }
 
 export interface GameState {
-  screen: 'field' | 'stance' | 'battle' | 'shop' | 'pack';
+  screen: 'field' | 'stance' | 'battle' | 'shop' | 'pack' | 'talk' | 'dex';
   player: PlayerState;
   danger: DangerState;
   character: CharacterState;
@@ -84,6 +107,11 @@ export interface GameState {
   stones: number;
   /** 지금 열려 있는 상점 */
   shop: Shop | null;
+  /** 지금 대화 중인 NPC와 노드 */
+  talking: { npc: Npc; node: DialogueNode } | null;
+  questLog: QuestLog;
+  dex: DexState;
+  visited: string[];
   rngState: RngState;
   tick: number;
   messages: string[];
@@ -97,7 +125,12 @@ export interface GameState {
   say: (text: string) => void;
 
   openPack: () => void;
+  openDex: () => void;
   closeScreen: () => void;
+  chooseDialogue: (index: number) => void;
+  advanceDialogue: () => void;
+  evolvePet: (uid: string, mode: EvolveMode) => void;
+  rerollPet: (uid: string) => void;
   equipItem: (itemId: string) => void;
   unequipSlot: (slot: keyof Equipment) => void;
   useItem: (itemId: string) => void;
@@ -148,6 +181,36 @@ function startingPack(): { inventory: Inventory; equipment: Equipment } {
 }
 const pack = startingPack();
 
+/**
+ * 시작 시점의 퀘스트 상태.
+ *
+ * 빈 로그로 시작하면 모든 퀘스트가 locked이라, 촌장 머리 위에 느낌표가 뜨지
+ * 않는다. 처음 켰을 때 어디로 가야 하는지 알 수 없다 — 실제로 그랬다.
+ */
+const startingQuests = refreshAvailability(initialLog(), {
+  level: 5,
+  itemCount: (id) => pack.inventory.reduce((n, x) => (x.itemId === id ? n + x.qty : n), 0),
+  visited: new Set([START_MAP]),
+  questsDone: new Set<string>(),
+});
+
+/** 퀘스트·대화가 보는 좁은 창. 두 엔진 모두 스토어 구조를 몰라도 된다. */
+function worldOf(s: GameState): WorldView & DialogueWorld {
+  return {
+    level: s.character.level,
+    itemCount: (id) => s.inventory.reduce((n, x) => (x.itemId === id ? n + x.qty : n), 0),
+    visited: new Set(s.visited),
+    questsDone: new Set(Object.entries(s.questLog).filter(([, p]) => p.state === 'done').map(([id]) => id)),
+    questLog: s.questLog,
+  };
+}
+
+/** 퀘스트 상태를 지금 세계에 맞춰 다시 접는다. 상태가 바뀔 만한 곳마다 부른다. */
+function refreshed(s: GameState, log: QuestLog): QuestLog {
+  const world = worldOf({ ...s, questLog: log });
+  return refreshCompletion(refreshAvailability(log, world), world);
+}
+
 export const useGame = create<GameState>((set, get) => ({
   screen: 'field',
   player: createPlayer(START_MAP, getMap(START_MAP).spawn.x, getMap(START_MAP).spawn.y),
@@ -159,6 +222,10 @@ export const useGame = create<GameState>((set, get) => ({
   equipment: pack.equipment,
   stones: CURRENCY.starting,
   shop: null,
+  talking: null,
+  questLog: startingQuests,
+  dex: emptyDex(),
+  visited: [START_MAP],
   rngState: start.rngState,
   tick: 0,
   messages: ['돌바람 마을. 남쪽 길로 나가면 초원이다.'],
@@ -187,10 +254,15 @@ export const useGame = create<GameState>((set, get) => ({
     const warp = warpAt(map, player.tile.x, player.tile.y);
     if (warp) {
       player = { ...player, mapId: warp.toMapId, tile: { x: warp.toX, y: warp.toY }, target: null, progress: 0 };
+      const visited = s.visited.includes(warp.toMapId) ? s.visited : [...s.visited, warp.toMapId];
+      const next = { ...s, visited };
       set({
         player,
+        visited,
         danger: createDanger(),
         rngState: rng.getState(),
+        // 방문이 퀘스트 목표일 수 있다
+        questLog: refreshed(next, s.questLog),
         messages: [...s.messages.slice(-4), `${getMap(warp.toMapId).name}에 들어섰다.`],
       });
       return;
@@ -202,6 +274,17 @@ export const useGame = create<GameState>((set, get) => ({
     if (shop) {
       set({ screen: 'shop', shop, player, rngState: rng.getState(), messages: [...s.messages.slice(-4), `${shop.name} — ${shop.greeting}`] });
       return;
+    }
+
+    // NPC 앞에 서면 말을 건다
+    const npc = npcAt(map.id, player.tile.x, player.tile.y);
+    if (npc) {
+      const log = refreshed(s, s.questLog);
+      const node = entryNode(npc, worldOf({ ...s, questLog: log }));
+      if (node) {
+        set({ screen: 'talk', talking: { npc, node }, player, questLog: log, rngState: rng.getState() });
+        return;
+      }
     }
 
     const step = stepDanger(map, player.tile, s.danger, rng);
@@ -232,6 +315,8 @@ export const useGame = create<GameState>((set, get) => ({
       player,
       danger: step.danger,
       tick,
+      // 마주친 것만으로도 도감에 남는다. 못 잡은 종이 목록에 보여야 다시 나간다.
+      dex: markSeen(s.dex, pets.map((p) => p.speciesId)),
       rngState: rng.getState(),
       pending: { zone: step.zone, wild: pets, allies, enemies: combatants, seed: rng.int(0, 2 ** 30) },
       messages: [...s.messages.slice(-4), `${step.zone.name}에서 무언가 튀어나왔다!`],
@@ -314,6 +399,19 @@ export const useGame = create<GameState>((set, get) => ({
       }
     }
 
+    // 퀘스트 사건을 만든다. 세는 곳은 퀘스트 엔진 한 곳뿐이다.
+    const events: QuestEvent[] = [];
+    for (const e of s.pending.enemies) {
+      const final = result.finalState.enemies.find((c) => c.id === e.id);
+      const wasCaptured = result.capturedPet?.combatantId === e.id;
+      if (wasCaptured) {
+        const sp = getSpecies(e.speciesId!);
+        events.push({ kind: 'capture', speciesId: sp.id, rarity: sp.rarity });
+      } else if (final && final.hp <= 0) {
+        events.push({ kind: 'defeat', speciesId: e.speciesId!, element: e.element.primary });
+      }
+    }
+
     const heroFinal = result.finalState.allies.find((c) => c.id === 'hero');
 
     set({
@@ -329,6 +427,8 @@ export const useGame = create<GameState>((set, get) => ({
           heroHp: Math.max(1, heroFinal?.hp ?? s.character.hp),
           inventory: nextInventory,
           stones: s.stones + stones,
+          questLog: applyEvents(s.questLog, events),
+          dex: captured ? markCaught(s.dex, captured.speciesId) : s.dex,
         },
       },
       pending: null,
@@ -347,7 +447,10 @@ export const useGame = create<GameState>((set, get) => ({
     if (r.rewards.levelUps > 0) lines.push(`레벨 업 ${r.rewards.levelUps}회`);
 
     // 전멸하면 마을로 돌려보낸다. 되돌릴 수 없는 손실을 만들지는 않는다.
-    const wiped = r.result.winner === 'enemy';
+    // 도주도 winner가 'enemy'다(도망친 쪽은 이기지 못한다). 그것까지 전멸로
+    // 치면 도망칠 때마다 마을로 끌려가고 체력이 가득 차 버린다 — 도주가
+    // 손해가 아니라 무료 귀환이 되어, 위험한 판단이라는 성격이 사라진다.
+    const wiped = r.result.winner === 'enemy' && r.result.endedBy === 'defeat';
     const player = wiped
       ? createPlayer(START_MAP, getMap(START_MAP).spawn.x, getMap(START_MAP).spawn.y)
       : s.player;
@@ -361,6 +464,8 @@ export const useGame = create<GameState>((set, get) => ({
       box: r.applied.box,
       inventory: r.applied.inventory,
       stones: r.applied.stones,
+      dex: r.applied.dex,
+      questLog: refreshed({ ...s, inventory: r.applied.inventory, questLog: r.applied.questLog }, r.applied.questLog),
       character: {
         ...s.character,
         hp: wiped ? applyEquipment(s.character.baseStats, s.equipment).hp : r.applied.heroHp,
@@ -372,12 +477,168 @@ export const useGame = create<GameState>((set, get) => ({
   /* ─────────────── 소지품 ─────────────── */
 
   openPack() {
-    if (get().screen === 'field') set({ screen: 'pack' });
+    const s = get();
+    if (s.screen === 'field') set({ screen: 'pack', questLog: refreshed(s, s.questLog) });
+  },
+
+  openDex() {
+    if (get().screen === 'field') set({ screen: 'dex' });
+  },
+
+  /* ─────────────── 대화 ─────────────── */
+
+  /**
+   * 선택지를 고른다.
+   *
+   * 행동(퀘스트 수락·보고)은 대화 엔진이 아니라 여기서 실행한다. 엔진은 무엇을
+   * 해야 하는지 알려줄 뿐이라, 대화를 미리 훑어봐도 부작용이 없다.
+   */
+  chooseDialogue(index) {
+    const s = get();
+    if (!s.talking) return;
+    const choice = visibleChoices(s.talking.node, worldOf(s))[index];
+    if (!choice) return;
+
+    let log = s.questLog;
+    let inventory = s.inventory;
+    let stones = s.stones;
+    let party = s.party;
+    const lines: string[] = [];
+
+    const act = (a: DialogueAction) => {
+      if (a.kind === 'accept') {
+        log = acceptQuest(log, a.questId);
+        lines.push(`퀘스트 수락 — ${QUEST_BY_ID[a.questId]?.name ?? a.questId}`);
+        return;
+      }
+      if (a.kind === 'turnIn') {
+        const r = turnInQuest(log, a.questId);
+        if (!r.rewards) return;
+        log = r.log;
+        const q = QUEST_BY_ID[a.questId];
+        lines.push(`퀘스트 완료 — ${q?.name ?? a.questId}`);
+
+        if (r.rewards.stones) {
+          stones += r.rewards.stones;
+          lines.push(`+${r.rewards.stones} 스톤`);
+        }
+        for (const it of r.rewards.items ?? []) {
+          const put = addItem(inventory, it.itemId, it.qty);
+          inventory = put.inv;
+          if (put.added < it.qty) lines.push(`${ITEMS[it.itemId]?.name}을(를) 다 못 받았다 — 가방을 비우고 오면 된다.`);
+          else lines.push(`${ITEMS[it.itemId]?.name} ×${put.added}`);
+        }
+        if (r.rewards.exp) {
+          party = party.map((p) => gainExp(p, r.rewards!.exp!).pet);
+          lines.push(`펫 경험치 +${r.rewards.exp}`);
+        }
+      }
+    };
+
+    if (choice.action) act(choice.action);
+
+    const nextState = { ...s, questLog: log, inventory, stones, party };
+    log = refreshed(nextState, log);
+
+    const nextNode = choice.next ? nodeOf(s.talking.npc, choice.next) : undefined;
+    set({
+      questLog: log,
+      inventory,
+      stones,
+      party,
+      messages: [...s.messages, ...lines].slice(-5),
+      ...(nextNode
+        ? { talking: { npc: s.talking.npc, node: nextNode } }
+        : { screen: 'field' as const, talking: null }),
+    });
+  },
+
+  /** 선택지가 없는 노드에서 다음으로. next가 없으면 대화가 끝난다. */
+  advanceDialogue() {
+    const s = get();
+    if (!s.talking) return;
+    const nextNode = s.talking.node.next ? nodeOf(s.talking.npc, s.talking.node.next) : undefined;
+    if (nextNode) set({ talking: { npc: s.talking.npc, node: nextNode } });
+    else set({ screen: 'field', talking: null });
+  },
+
+  /* ─────────────── 진화 ─────────────── */
+
+  evolvePet(uid, mode) {
+    const s = get();
+    const pet = s.party.find((p) => p.uid === uid) ?? s.box.find((p) => p.uid === uid);
+    if (!pet) return;
+
+    const from = getSpecies(pet.speciesId);
+    const world = worldOf(s);
+    // 퀘스트 진화는 주술사의 퀘스트를 끝내야 열린다
+    const check = canEvolve(pet, from, {
+      hasItem: (id) => world.itemCount(id) > 0,
+      questDone: world.questsDone.has('boundOfGrowth'),
+      mode,
+    });
+    if (!check.ok) {
+      const why = {
+        noEvolution: '이 펫은 진화하지 않는다.',
+        level: `${check.requiredLevel}레벨이 되어야 한다.`,
+        item: `${ITEMS[check.requiredItemId ?? '']?.name ?? '재료'}가 필요하다.`,
+        questIncomplete: '주술사에게 배운 뒤에야 가능하다.',
+      }[check.reason ?? 'noEvolution'];
+      set({ messages: [...s.messages.slice(-4), why] });
+      return;
+    }
+
+    const rng = createRng(s.rngState);
+    const to = getSpecies(check.toSpeciesId!);
+    const r = evolve(pet, from, to, mode, rng);
+    const swap = (list: PetInstance[]) => list.map((p) => (p.uid === uid ? r.pet : p));
+
+    set({
+      party: swap(s.party),
+      box: swap(s.box),
+      inventory: removeItem(s.inventory, check.requiredItemId!, 1).inv,
+      dex: markCaught(s.dex, to.id),
+      rngState: rng.getState(),
+      messages: [
+        ...s.messages.slice(-3),
+        `${from.name}이(가) ${to.name}(으)로 진화했다.`,
+        `성장률 ${growthScore(r.before).toFixed(2)} → ${growthScore(r.after).toFixed(2)}`,
+      ],
+    });
+  },
+
+  rerollPet(uid) {
+    const s = get();
+    const pet = s.party.find((p) => p.uid === uid) ?? s.box.find((p) => p.uid === uid);
+    const world = worldOf(s);
+    if (!pet) return;
+    if (world.itemCount('rerollDraught') <= 0) {
+      set({ messages: [...s.messages.slice(-4), '재추첨의 물약이 없다.'] });
+      return;
+    }
+
+    const rng = createRng(s.rngState);
+    const r = rerollGrowth(pet, getSpecies(pet.speciesId), rng);
+    const swap = (list: PetInstance[]) => list.map((p) => (p.uid === uid ? r.pet : p));
+
+    set({
+      party: swap(s.party),
+      box: swap(s.box),
+      inventory: removeItem(s.inventory, 'rerollDraught', 1).inv,
+      rngState: rng.getState(),
+      messages: [
+        ...s.messages.slice(-4),
+        // 상한은 오르지 않는다. 같은 범위에서 다시 뽑을 뿐이다.
+        `성장률 재추첨 ${growthScore(r.before).toFixed(2)} → ${growthScore(r.after).toFixed(2)}`,
+      ],
+    });
   },
 
   closeScreen() {
     const s = get();
-    if (s.screen === 'shop' || s.screen === 'pack') set({ screen: 'field', shop: null });
+    if (s.screen === 'shop' || s.screen === 'pack' || s.screen === 'dex' || s.screen === 'talk') {
+      set({ screen: 'field', shop: null, talking: null });
+    }
   },
 
   equipItem(itemId) {

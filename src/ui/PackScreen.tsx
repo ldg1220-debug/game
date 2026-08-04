@@ -1,5 +1,12 @@
+import { canEvolve } from '../engine/growth/evolve';
+import { growthScore } from '../engine/types';
 import { EQUIP_SLOTS, SLOT_LABEL } from '../game/equipment';
-import { getItem, inventoryStatus, sortForDisplay } from '../game/inventory';
+import { getSpecies } from '../game/party';
+import { activeQuests, objectiveProgress, objectiveTarget, objectiveText } from '../game/quests';
+import { useWorldView } from './useCharacterView';
+import { useState } from 'react';
+import { ITEMS as ITEMS_INDEX, getItem, inventoryStatus, sortForDisplay } from '../game/inventory';
+import { MAPS } from '../game/maps';
 import { SPIRITS_BY_ID } from '../game/party';
 import { sellPrice } from '../game/shop';
 import { useGame } from '../game/store';
@@ -11,6 +18,10 @@ import { useCharacterView } from './useCharacterView';
  * 무게와 슬롯을 항상 보여준다. 제한이 보이지 않으면 제한이 없는 것과 같고,
  * 그러면 "무엇을 들고 갈까"라는 선택이 사라진다.
  */
+
+const MAP_NAMES: Record<string, string> = Object.fromEntries(
+  Object.values(MAPS).map((m) => [m.id, m.name]),
+);
 
 const KIND_LABEL: Record<string, string> = {
   heal: '회복',
@@ -29,6 +40,107 @@ function BonusText({ bonus }: { bonus?: Partial<Record<'hp' | 'atk' | 'def' | 's
   return <span className="tiny" style={{ color: 'var(--ok)' }}>{parts.join(' ')}</span>;
 }
 
+/** 펫 목록 — 성장률과 진화. 진화가 안 되면 왜 안 되는지 그 자리에 적는다. */
+function PetList() {
+  const party = useGame((s) => s.party);
+  const box = useGame((s) => s.box);
+  const world = useWorldView();
+  const evolvePet = useGame((s) => s.evolvePet);
+  const rerollPet = useGame((s) => s.rerollPet);
+
+  const all = [...party, ...box];
+  if (all.length === 0) return <p className="info small">동료가 없다.</p>;
+
+  return (
+    <>
+      {all.map((pet) => {
+        const sp = getSpecies(pet.speciesId);
+        const has = (id: string) => world.itemCount(id) > 0;
+        const questDone = world.questsDone.has('boundOfGrowth');
+        const quest = canEvolve(pet, sp, { hasItem: has, questDone, mode: 'quest' });
+        const cat = canEvolve(pet, sp, { hasItem: has, questDone, mode: 'catalyst' });
+        const why = {
+          noEvolution: '진화하지 않는 종',
+          level: `${quest.requiredLevel}레벨 필요`,
+          item: '재료 없음',
+          questIncomplete: '주술사에게 배워야 한다',
+        };
+        return (
+          <div key={pet.uid} className="row spread" style={{ padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <span className="small">{pet.nickname ?? sp.name}</span>
+              <span className="tiny muted"> L{pet.level} · 성장률 {growthScore(pet.growth).toFixed(2)} · 충성 {pet.loyalty}</span>
+              {quest.toSpeciesId && (
+                <div className="tiny muted">
+                  진화 → {getSpecies(quest.toSpeciesId).name}
+                  {!quest.ok && !cat.ok && <span> · {why[quest.reason ?? 'noEvolution']}</span>}
+                </div>
+              )}
+            </div>
+            <div className="row">
+              {quest.ok && (
+                <button className="small" onClick={() => evolvePet(pet.uid, 'quest')}>
+                  진화의 돌
+                </button>
+              )}
+              {cat.ok && (
+                <button className="small" onClick={() => evolvePet(pet.uid, 'catalyst')} title="이전 성장률이 절반 반영된다">
+                  촉진제
+                </button>
+              )}
+              {has('rerollDraught') && (
+                <button className="small" onClick={() => rerollPet(pet.uid)} title="같은 종 안에서 성장률만 다시 뽑는다. 상한은 오르지 않는다.">
+                  재추첨
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+/** 진행 중인 퀘스트. 목표를 보려고 마을까지 돌아가는 동선을 없앤다. */
+function QuestList() {
+  const questLog = useGame((s) => s.questLog);
+  const world = useWorldView();
+  const rows = activeQuests(questLog);
+  if (rows.length === 0) return <p className="info small">받은 의뢰가 없다.</p>;
+
+  return (
+    <>
+      {rows.map(({ quest, state, counts }) => (
+        <div key={quest.id} style={{ padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+          <div className="small">
+            <strong>{quest.name}</strong>
+            <span className="tiny muted"> · {state === 'ready' ? '보고 가능' : '진행 중'}</span>
+          </div>
+          <div className="tiny muted">{quest.summary}</div>
+          {quest.objectives.map((o, i) => {
+            const now = objectiveProgress(o, counts[i] ?? 0, world);
+            const target = objectiveTarget(o);
+            return (
+              <div key={i} className="tiny" style={{ color: now >= target ? 'var(--ok)' : 'var(--muted)' }}>
+                {now >= target ? '✓' : '·'} {objectiveText(o, nameOf)} ({now}/{target})
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </>
+  );
+}
+
+function nameOf(id: string): string {
+  if (ITEMS_INDEX[id]) return ITEMS_INDEX[id]!.name;
+  try {
+    return getSpecies(id).name;
+  } catch {
+    return MAP_NAMES[id] ?? id;
+  }
+}
+
 export function PackScreen() {
   const inventory = useGame((s) => s.inventory);
   const equipment = useGame((s) => s.equipment);
@@ -40,6 +152,7 @@ export function PackScreen() {
 
   const status = inventoryStatus(inventory);
   const rows = sortForDisplay(inventory);
+  const [tab, setTab] = useState<'items' | 'pets' | 'quests'>('items');
 
   return (
     <div className="overlay">
@@ -94,10 +207,19 @@ export function PackScreen() {
           </div>
         </div>
 
-        {/* ── 가방 ── */}
+        <div className="row" style={{ marginBottom: 6 }}>
+          {([['items', '가방'], ['pets', '펫'], ['quests', '의뢰']] as const).map(([k, label]) => (
+            <button key={k} className="small" onClick={() => setTab(k)} disabled={tab === k}>
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div className="log" style={{ height: 240 }}>
-          {rows.length === 0 && <p className="info">가방이 비었다.</p>}
-          {rows.map((stack) => {
+          {tab === 'pets' && <PetList />}
+          {tab === 'quests' && <QuestList />}
+          {tab === 'items' && rows.length === 0 && <p className="info">가방이 비었다.</p>}
+          {tab === 'items' && rows.map((stack) => {
             const item = getItem(stack.itemId);
             const canEquip = item.kind === 'equipment';
             const canUse = (item.kind === 'heal' && (item.heal ?? 0) > 0) || (item.kind === 'food' && !!item.loyalty);

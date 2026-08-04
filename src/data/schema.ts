@@ -396,6 +396,157 @@ function checkEconomy(raw: unknown, items: Item[], errors: string[]): void {
   }
 }
 
+/* ─────────────── 퀘스트 · 대화 ─────────────── */
+
+const ObjectiveSchema = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('defeat'), count: z.number().int().min(1), speciesId: z.string().optional(), element: ElementSchema.optional() }),
+  z.strictObject({ kind: z.literal('capture'), count: z.number().int().min(1), speciesId: z.string().optional(), rarity: RaritySchema.optional() }),
+  z.strictObject({ kind: z.literal('collect'), count: z.number().int().min(1), itemId: z.string().min(1) }),
+  z.strictObject({ kind: z.literal('reach'), level: z.number().int().min(1).max(99) }),
+  z.strictObject({ kind: z.literal('visit'), mapId: z.string().min(1) }),
+]);
+
+export const QuestSchema = z.strictObject({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  giver: z.string().min(1),
+  summary: z.string().min(1),
+  completion: z.string().min(1),
+  requires: z
+    .strictObject({ level: z.number().int().min(1).optional(), quests: z.array(z.string()).optional() })
+    .optional(),
+  objectives: z.array(ObjectiveSchema).min(1),
+  rewards: z.strictObject({
+    stones: z.number().int().nonnegative().optional(),
+    exp: z.number().int().nonnegative().optional(),
+    items: z.array(z.strictObject({ itemId: z.string().min(1), qty: z.number().int().min(1) })).optional(),
+  }),
+});
+
+const QuestStateSchema = z.enum(['locked', 'available', 'active', 'ready', 'done']);
+
+const ConditionSchema = z.strictObject({
+  minLevel: z.number().int().min(1).optional(),
+  hasItem: z.string().min(1).optional(),
+  quest: z
+    .strictObject({ id: z.string().min(1), state: z.union([QuestStateSchema, z.array(QuestStateSchema)]) })
+    .optional(),
+});
+
+export const NpcSchema = z.strictObject({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  mapId: z.string().min(1),
+  x: z.number().int().nonnegative(),
+  y: z.number().int().nonnegative(),
+  entry: z.array(z.string().min(1)).min(1),
+  nodes: z
+    .array(
+      z.strictObject({
+        id: z.string().min(1),
+        text: z.string().min(1),
+        next: z.string().optional(),
+        condition: ConditionSchema.optional(),
+        choices: z
+          .array(
+            z.strictObject({
+              text: z.string().min(1),
+              next: z.string().optional(),
+              condition: ConditionSchema.optional(),
+              action: z
+                .union([
+                  z.strictObject({ kind: z.literal('accept'), questId: z.string().min(1) }),
+                  z.strictObject({ kind: z.literal('turnIn'), questId: z.string().min(1) }),
+                  z.strictObject({ kind: z.literal('end') }),
+                ])
+                .optional(),
+            }),
+          )
+          .optional(),
+      }),
+    )
+    .min(1),
+});
+
+function checkQuestsAndDialogue(
+  rawQuests: unknown,
+  rawDialogue: unknown,
+  items: Item[],
+  pets: PetSpecies[],
+  errors: string[],
+): void {
+  const quests = z.array(QuestSchema).safeParse(rawQuests);
+  if (!quests.success) {
+    errors.push(...formatIssues('quests', quests.error));
+    return;
+  }
+  const npcs = z.array(NpcSchema).safeParse(rawDialogue);
+  if (!npcs.success) {
+    errors.push(...formatIssues('dialogue', npcs.error));
+    return;
+  }
+
+  const itemIds = new Set(items.map((i) => i.id));
+  const petIds = new Set(pets.map((p) => p.id));
+  const questIds = new Set(quests.data.map((q) => q.id));
+  const npcIds = new Set(npcs.data.map((n) => n.id));
+
+  for (const q of quests.data) {
+    if (!npcIds.has(q.giver)) errors.push(`quests(${q.id}): 없는 NPC — ${q.giver}`);
+    for (const id of q.requires?.quests ?? []) {
+      if (!questIds.has(id)) errors.push(`quests(${q.id}).requires: 없는 퀘스트 — ${id}`);
+      if (id === q.id) errors.push(`quests(${q.id}): 자기 자신을 선행 조건으로 삼는다`);
+    }
+    for (const o of q.objectives) {
+      if (o.kind === 'collect' && !itemIds.has(o.itemId)) errors.push(`quests(${q.id}): 없는 아이템 — ${o.itemId}`);
+      if ((o.kind === 'defeat' || o.kind === 'capture') && o.speciesId && !petIds.has(o.speciesId)) {
+        errors.push(`quests(${q.id}): 없는 종 — ${o.speciesId}`);
+      }
+    }
+    for (const it of q.rewards.items ?? []) {
+      if (!itemIds.has(it.itemId)) errors.push(`quests(${q.id}).rewards: 없는 아이템 — ${it.itemId}`);
+    }
+    // 보상이 아예 없으면 받을 이유가 없는 퀘스트가 된다
+    const empty = !q.rewards.stones && !q.rewards.exp && (q.rewards.items ?? []).length === 0;
+    if (empty) errors.push(`quests(${q.id}): 보상이 없다`);
+  }
+
+  for (const npc of npcs.data) {
+    const nodeIds = new Set(npc.nodes.map((n) => n.id));
+    for (const id of npc.entry) {
+      if (!nodeIds.has(id)) errors.push(`dialogue(${npc.id}).entry: 없는 노드 — ${id}`);
+    }
+    for (const node of npc.nodes) {
+      // 막다른 노드가 되면 대화가 닫히지 않는다
+      if (node.next && !nodeIds.has(node.next)) errors.push(`dialogue(${npc.id}.${node.id}): 없는 노드 — ${node.next}`);
+      for (const c of node.choices ?? []) {
+        if (c.next && !nodeIds.has(c.next)) errors.push(`dialogue(${npc.id}.${node.id}): 없는 노드 — ${c.next}`);
+        if (c.action && c.action.kind !== 'end' && !questIds.has(c.action.questId)) {
+          errors.push(`dialogue(${npc.id}.${node.id}): 없는 퀘스트 — ${c.action.questId}`);
+        }
+        if (!c.next && !c.action) {
+          errors.push(`dialogue(${npc.id}.${node.id}): 선택지 "${c.text}"가 아무 데도 가지 않는다`);
+        }
+      }
+      if (node.condition?.quest && !questIds.has(node.condition.quest.id)) {
+        errors.push(`dialogue(${npc.id}.${node.id}): 없는 퀘스트 — ${node.condition.quest.id}`);
+      }
+    }
+  }
+
+  // 받을 수 있는 퀘스트는 반드시 대화로 받을 수 있어야 한다
+  const accepted = new Set(
+    npcs.data.flatMap((n) => n.nodes.flatMap((d) => (d.choices ?? []).map((c) => (c.action?.kind === 'accept' ? c.action.questId : '')))),
+  );
+  const turnedIn = new Set(
+    npcs.data.flatMap((n) => n.nodes.flatMap((d) => (d.choices ?? []).map((c) => (c.action?.kind === 'turnIn' ? c.action.questId : '')))),
+  );
+  for (const q of quests.data) {
+    if (!accepted.has(q.id)) errors.push(`quests(${q.id}): 대화로 받을 수 없다`);
+    if (!turnedIn.has(q.id)) errors.push(`quests(${q.id}): 대화로 보고할 수 없다`);
+  }
+}
+
 /* ─────────────── 스키마 ↔ 타입 동기화 ───────────────
  *
  * 스키마와 types.ts가 따로 놀면 검증은 통과하는데 코드가 터진다. 아래 단언이
@@ -597,6 +748,8 @@ export function validateData(raw: {
   growth?: unknown;
   field?: unknown;
   economy?: unknown;
+  quests?: unknown;
+  dialogue?: unknown;
 }): ValidationResult {
   const errors: string[] = [];
   const result: ValidationResult = {
@@ -621,6 +774,9 @@ export function validateData(raw: {
   if (raw.growth !== undefined) checkGrowthConfig(raw.growth, errors);
   if (raw.field !== undefined) checkField(raw.field, errors);
   if (raw.economy !== undefined) checkEconomy(raw.economy, result.items, errors);
+  if (raw.quests !== undefined && raw.dialogue !== undefined) {
+    checkQuestsAndDialogue(raw.quests, raw.dialogue, result.items, result.pets, errors);
+  }
 
   return result;
 }

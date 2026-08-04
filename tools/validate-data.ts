@@ -33,6 +33,8 @@ const result = validateData({
   growth: readJson('growth'),
   field: readJson('field'),
   economy: readJson('economy'),
+  quests: readJson('quests'),
+  dialogue: readJson('dialogue'),
 });
 
 if (result.errors.length > 0) {

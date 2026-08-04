@@ -12,6 +12,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+const HERE = (rel) => path.resolve(fileURLToPath(new URL(rel, import.meta.url)));
+const readJson = (rel) => JSON.parse(fs.readFileSync(HERE(rel), 'utf8'));
+
 const OUT = path.resolve(fileURLToPath(new URL('../src/data/maps.json', import.meta.url)));
 
 const GROUND = { grass: 0, path: 1, water: 2, sand: 3, stone: 4, marsh: 5, scorched: 6, caveFloor: 7 };
@@ -308,6 +311,45 @@ for (const m of maps) {
   if (m.layers.collision[m.spawn.y * m.width + m.spawn.x] === 1) {
     console.error(`  ✗ ${m.id}: 시작 지점이 벽이다`);
     bad++;
+  }
+}
+
+// 맵 위에 놓이는 것들(상점·NPC)이 실제로 설 수 있는 자리인지 여기서 본다.
+// 맵의 통행 정보를 아는 곳이 여기뿐이라, 검사도 여기 두는 게 맞다.
+for (const [file, rows, label] of [
+  ['../src/data/economy.json', readJson('../src/data/economy.json').shops, '상점'],
+  ['../src/data/dialogue.json', readJson('../src/data/dialogue.json'), 'NPC'],
+]) {
+  void file;
+  for (const row of rows) {
+    const map = byId.get(row.mapId);
+    if (!map) {
+      console.error(`  ✗ ${label} ${row.id}: 없는 맵 ${row.mapId}`);
+      bad++;
+      continue;
+    }
+    if (row.x >= map.width || row.y >= map.height) {
+      console.error(`  ✗ ${label} ${row.id}: (${row.x},${row.y})가 맵 밖이다`);
+      bad++;
+    } else if (map.layers.collision[row.y * map.width + row.x] === 1) {
+      console.error(`  ✗ ${label} ${row.id}: (${row.x},${row.y})는 지나갈 수 없는 칸이다`);
+      bad++;
+    } else if (map.warps.some((w) => w.x === row.x && w.y === row.y)) {
+      console.error(`  ✗ ${label} ${row.id}: 워프 칸 위에 있다`);
+      bad++;
+    }
+  }
+}
+
+// 상점과 NPC가 같은 칸에 있으면 하나는 영원히 열리지 않는다
+{
+  const shops = readJson('../src/data/economy.json').shops;
+  const npcs = readJson('../src/data/dialogue.json');
+  for (const n of npcs) {
+    if (shops.some((sh) => sh.mapId === n.mapId && sh.x === n.x && sh.y === n.y)) {
+      console.error(`  ✗ NPC ${n.id}와 상점이 같은 칸에 있다`);
+      bad++;
+    }
   }
 }
 
