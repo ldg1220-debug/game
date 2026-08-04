@@ -1,10 +1,14 @@
 import { getSpecies } from '../game/party';
 import { STANCE_HINT, STANCE_LABEL, type Stance } from '../game/stances';
 import { useGame } from '../game/store';
+import { useCharacterView } from './useCharacterView';
 import { loyaltyTier } from '../engine/loyalty';
 import { growthScore } from '../engine/types';
+import { useEffect } from 'react';
 import { BattleScreen } from './BattleScreen';
 import { FieldScreen } from './FieldScreen';
+import { PackScreen } from './PackScreen';
+import { ShopScreen } from './ShopScreen';
 
 const STANCES: Stance[] = ['aggressive', 'capture', 'defensive', 'flee'];
 
@@ -19,6 +23,8 @@ const TIER_LABEL = {
 function PartyBar() {
   const party = useGame((s) => s.party);
   const character = useGame((s) => s.character);
+  const view = useCharacterView();
+  const stones = useGame((s) => s.stones);
 
   return (
     <div className="panel">
@@ -28,11 +34,11 @@ function PartyBar() {
             <span>{character.name}</span>
             <span className="muted">L{character.level}</span>
           </div>
-          <div className={`hpbar ${character.hp / character.stats.hp < 0.25 ? 'crit' : character.hp / character.stats.hp < 0.5 ? 'low' : ''}`} style={{ marginTop: 5 }}>
-            <i style={{ width: `${(character.hp / character.stats.hp) * 100}%` }} />
+          <div className={`hpbar ${character.hp / view.maxHp < 0.25 ? 'crit' : character.hp / view.maxHp < 0.5 ? 'low' : ''}`} style={{ marginTop: 5 }}>
+            <i style={{ width: `${(character.hp / view.maxHp) * 100}%` }} />
           </div>
           <div className="tiny muted" style={{ marginTop: 4 }}>
-            매력 {character.charm} · 정령 {character.spirits.length}
+            공 {view.stats.atk} 방 {view.stats.def} 순 {view.stats.spd} · 정령 {view.spirits.length}
           </div>
         </div>
 
@@ -60,6 +66,11 @@ function PartyBar() {
         })}
 
         {party.length === 0 && <span className="muted small">동료가 없다.</span>}
+
+        <div style={{ marginLeft: 'auto', textAlign: 'right' }} className="small">
+          <div style={{ color: 'var(--gold)' }}>{stones.toLocaleString()} 스톤</div>
+          <div className="tiny muted">매력 {character.charm}</div>
+        </div>
       </div>
     </div>
   );
@@ -96,6 +107,23 @@ function StancePrompt() {
 
 export default function App() {
   const screen = useGame((s) => s.screen);
+  const openPack = useGame((s) => s.openPack);
+  const closeScreen = useGame((s) => s.closeScreen);
+
+  // 소지품은 어디서나 열고 닫을 수 있어야 한다. 필드로 돌아가 메뉴를 찾는
+  // 동선은 짧을수록 좋다.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'Escape') closeScreen();
+      else if (e.code === 'KeyI' || e.code === 'Tab') {
+        e.preventDefault();
+        if (useGame.getState().screen === 'field') openPack();
+        else closeScreen();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [openPack, closeScreen]);
 
   return (
     <div className="app">
@@ -104,6 +132,8 @@ export default function App() {
       <div style={{ position: 'relative' }}>
         {screen === 'battle' ? <BattleScreen /> : <FieldScreen />}
         {screen === 'stance' && <StancePrompt />}
+        {screen === 'shop' && <ShopScreen />}
+        {screen === 'pack' && <PackScreen />}
       </div>
 
       <PartyBar />

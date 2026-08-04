@@ -32,6 +32,7 @@ const result = validateData({
   formula: readJson('formula'),
   growth: readJson('growth'),
   field: readJson('field'),
+  economy: readJson('economy'),
 });
 
 if (result.errors.length > 0) {

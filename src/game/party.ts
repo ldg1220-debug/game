@@ -8,10 +8,11 @@
 
 import fieldJson from '../data/field.json';
 import petsJson from '../data/pets.json';
+import spiritsJson from '../data/spirits.json';
 import type { Combatant, Row } from '../engine/battle';
 import { battleStats, createPetInstance } from '../engine/growth';
 import type { RNG } from '../engine/rng';
-import type { PetInstance, PetSpecies } from '../engine/types';
+import type { PetInstance, PetSpecies, Spirit } from '../engine/types';
 import type { EncounterZone } from './mapTypes';
 
 export interface CombatantConfig {
@@ -23,6 +24,11 @@ export const DEFAULT_COMBATANT: CombatantConfig = fieldJson.combatant;
 
 export const SPECIES: Record<string, PetSpecies> = Object.fromEntries(
   (petsJson as PetSpecies[]).map((s) => [s.id, s]),
+);
+
+/** 정령 이름을 화면에 띄우기 위한 색인. */
+export const SPIRITS_BY_ID: Record<string, Spirit> = Object.fromEntries(
+  (spiritsJson as Spirit[]).map((s) => [s.id, s]),
 );
 
 export function getSpecies(id: string): PetSpecies {

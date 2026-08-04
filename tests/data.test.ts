@@ -33,6 +33,7 @@ const raw = {
   formula: load('formula'),
   growth: load('growth'),
   field: load('field'),
+  economy: load('economy'),
 };
 const data = validateData(raw);
 

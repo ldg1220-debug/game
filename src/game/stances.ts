@@ -12,7 +12,7 @@
 
 import type { BattleCatalog, BattleCommand, BattleView, CombatantView, CommandSource } from '../engine/battle';
 import type { createDefaultAI } from '../engine/battle';
-import type { Skill } from '../engine/types';
+import type { Skill, Spirit } from '../engine/types';
 
 export type Stance = 'aggressive' | 'defensive' | 'capture' | 'flee';
 
@@ -52,6 +52,28 @@ function known(unit: CombatantView, catalog: BattleCatalog): Skill[] {
   return unit.skills
     .map((id) => catalog.skills[id])
     .filter((s): s is Skill => s !== undefined && unit.energy >= s.cost);
+}
+
+/**
+ * 쓸 수 있는 정령 중 가장 높은 레벨.
+ *
+ * 정령은 장비에 깃들어 있으므로, 무엇을 끼고 나왔는지가 곧 무슨 주술을 쓰는지다.
+ * 기력이 모자라면 낮은 레벨로 내려간다 — 레벨이 높을수록 소모가 크고 성공률은
+ * 낮으므로, 기력이 빠듯할 때 낮은 레벨을 쓰는 게 실제로 더 나을 때가 있다.
+ */
+function affordableSpirit(
+  unit: CombatantView,
+  catalog: BattleCatalog,
+  want: (sp: Spirit) => boolean,
+): { spiritId: string; level: number } | undefined {
+  for (const id of unit.spirits ?? []) {
+    const sp = catalog.spirits[id];
+    if (!sp || !want(sp)) continue;
+    for (let lv = sp.levels.length; lv >= 1; lv--) {
+      if (unit.energy >= sp.levels[lv - 1]!.cost) return { spiritId: id, level: lv };
+    }
+  }
+  return undefined;
 }
 
 function bestOffensive(unit: CombatantView, catalog: BattleCatalog): Skill | undefined {
@@ -124,9 +146,27 @@ function decide(
   if (stance === 'defensive') {
     const hurt = alive(view.allies).reduce((a, b) => (b.hp / b.stats.hp < a.hp / a.stats.hp ? b : a));
     if (hurt.hp / hurt.stats.hp < HEAL_HP_THRESHOLD) {
+      // 회복 정령을 먼저 본다. 정령은 기력만 쓰고 스킬 슬롯을 차지하지 않으므로,
+      // 장비를 갖춘 쪽이 실제로 오래 버틴다는 게 화면에서 보여야 한다.
+      const spring = affordableSpirit(u, catalog, (sp) => sp.effect.kind === 'heal');
+      if (spring) return { kind: 'spirit', ...spring, targetId: hurt.id };
       const heal = known(u, catalog).find((s) => s.archetype === 'heal' && s.power > 0);
       if (heal) return { kind: 'skill', skillId: heal.id, targetId: hurt.id };
     }
+    // 이로운 버프 정령이면 무엇이든 쓴다. 방어만 보면 순발력을 올려주는
+    // 부적 같은 물건이 사고도 아무 일 없는 장식이 된다.
+    const ward = affordableSpirit(
+      u,
+      catalog,
+      (sp) =>
+        sp.effect.kind === 'buff' &&
+        sp.effect.modifiers !== undefined &&
+        Object.values(sp.effect.modifiers).every((v) => v >= 1),
+    );
+    if (ward && !u.modifiers.some((m) => m.sourceId === ward.spiritId)) {
+      return { kind: 'spirit', ...ward, targetId: u.id };
+    }
+
     const guard = known(u, catalog).find((s) => s.archetype === 'guardBuff' && (s.modifiers?.def ?? 0) > 1);
     if (guard && !u.modifiers.some((m) => m.sourceId === guard.id)) {
       return { kind: 'skill', skillId: guard.id, targetId: u.id };
@@ -135,7 +175,23 @@ function decide(
     return atk ? { kind: 'skill', skillId: atk.id, targetId: target.id } : { kind: 'defend' };
   }
 
-  // aggressive
+  // aggressive — 공격 정령이 있으면 먼저 쓴다. 장비가 곧 화력이라는 게
+  // 눈에 보여야 장비를 갖출 이유가 생긴다.
+  const bolt = affordableSpirit(u, catalog, (sp) => sp.effect.kind === 'damage');
+  if (bolt) return { kind: 'spirit', ...bolt, targetId: target.id };
+
+  // 낙인·독 같은 지속 피해 정령도 공격 수단이다. 이걸 빼면 정령이 깃든 무기를
+  // 사고도 전투에서 아무 일도 일어나지 않는다 — 실제로 그렇게 만들어 봤다.
+  // 이미 걸린 상태이상은 다시 걸지 않는다.
+  const brand = affordableSpirit(
+    u,
+    catalog,
+    (sp) =>
+      sp.effect.kind === 'ailment' &&
+      !target.ailments.some((a) => a.ailment === sp.effect.ailment),
+  );
+  if (brand) return { kind: 'spirit', ...brand, targetId: target.id };
+
   const atk = bestOffensive(u, catalog);
   return atk ? { kind: 'skill', skillId: atk.id, targetId: target.id } : { kind: 'attack', targetId: target.id };
 }

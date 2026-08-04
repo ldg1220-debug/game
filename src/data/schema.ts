@@ -337,6 +337,65 @@ function checkField(raw: unknown, errors: string[]): void {
   }
 }
 
+/* ─────────────── 경제 ─────────────── */
+
+/** economy.json — 화폐·가방 제한·상점. */
+export const EconomySchema = z.strictObject({
+  currency: z.strictObject({
+    name: z.string().min(1),
+    starting: z.number().int().nonnegative(),
+    perEnemyLevel: z.number().nonnegative(),
+  }),
+  inventory: z.strictObject({
+    maxSlots: z.number().int().min(1),
+    maxWeight: z.number().positive(),
+    maxStack: z.number().int().min(1),
+  }),
+  trade: z.strictObject({ sellRatio: z.number().gt(0).lt(1) }),
+  shops: z
+    .array(
+      z.strictObject({
+        id: z.string().min(1),
+        name: z.string().min(1),
+        mapId: z.string().min(1),
+        x: z.number().int().nonnegative(),
+        y: z.number().int().nonnegative(),
+        greeting: z.string().min(1),
+        stock: z.array(z.string().min(1)).min(1),
+      }),
+    )
+    .min(1),
+});
+
+function checkEconomy(raw: unknown, items: Item[], errors: string[]): void {
+  const parsed = EconomySchema.safeParse(raw);
+  if (!parsed.success) {
+    errors.push(...formatIssues('economy', parsed.error));
+    return;
+  }
+  const c = parsed.data;
+  const itemIds = new Set(items.map((i) => i.id));
+  const seen = new Set<string>();
+
+  for (const shop of c.shops) {
+    if (seen.has(shop.id)) errors.push(`economy.shops: id 중복 — ${shop.id}`);
+    seen.add(shop.id);
+    for (const id of shop.stock) {
+      if (!itemIds.has(id)) errors.push(`economy.shops(${shop.id}): 없는 아이템 — ${id}`);
+    }
+  }
+
+  // 파는 값이 사는 값 이상이면 상점 왕복만으로 무한히 돈이 는다
+  if (c.trade.sellRatio >= 1) errors.push('economy.trade: 매입가가 정가 이상이다');
+
+  // 가장 싼 물건도 팔 때 1스톤은 받아야 판다는 행위가 의미를 가진다
+  for (const item of items) {
+    if (item.price > 0 && Math.floor(item.price * c.trade.sellRatio) < 1 && item.price >= 2) {
+      errors.push(`economy.trade: ${item.id}의 매입가가 0이 된다`);
+    }
+  }
+}
+
 /* ─────────────── 스키마 ↔ 타입 동기화 ───────────────
  *
  * 스키마와 types.ts가 따로 놀면 검증은 통과하는데 코드가 터진다. 아래 단언이
@@ -537,6 +596,7 @@ export function validateData(raw: {
   formula?: unknown;
   growth?: unknown;
   field?: unknown;
+  economy?: unknown;
 }): ValidationResult {
   const errors: string[] = [];
   const result: ValidationResult = {
@@ -560,6 +620,7 @@ export function validateData(raw: {
   if (raw.formula !== undefined) checkFormula(raw.formula, errors);
   if (raw.growth !== undefined) checkGrowthConfig(raw.growth, errors);
   if (raw.field !== undefined) checkField(raw.field, errors);
+  if (raw.economy !== undefined) checkEconomy(raw.economy, result.items, errors);
 
   return result;
 }

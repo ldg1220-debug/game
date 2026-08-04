@@ -17,11 +17,14 @@ import {
   type Combatant,
 } from '../engine/battle';
 import { createPetInstance, gainExp } from '../engine/growth';
-import { onFaint, onVictory } from '../engine/loyalty';
+import { onFaint, onFeed, onVictory } from '../engine/loyalty';
 import { createRng, type RngState } from '../engine/rng';
 import { initialLoyalty } from '../engine/capture';
 import type { PetInstance } from '../engine/types';
 import { createDanger, dangerLevel, stepDanger, type DangerState } from './encounter';
+import { applyEquipment, availableSpirits, emptyEquipment, equip, equipmentWeight, unequip, type Equipment } from './equipment';
+import { ITEMS, addItem, removeItem, weightOf, type Inventory } from './inventory';
+import { CURRENCY, buy, sell, shopAt, stoneReward, type Shop } from './shop';
 import { getMap, warpAt, zoneAt } from './maps';
 import type { EncounterZone } from './mapTypes';
 import { createPlayer, stepMovement, type MoveInput, type PlayerState } from './movement';
@@ -29,7 +32,8 @@ import { getSpecies, makeCharacter, petToCombatant, rollEncounterParty } from '.
 import { createStanceSource, type Stance } from './stances';
 
 const START_MAP = 'village';
-const CAPTURE_TOOL = 'ropeCrude';
+/** 포획 태세가 쓰는 밧줄. 가방에 있는 것 중 가장 좋은 걸 고른다. */
+const CAPTURE_TOOLS = ['ropeMaster', 'ropeFine', 'ropeCrude'] as const;
 /** 야생 펫을 잡으면 이 경험치를 받는다. 레벨과 마릿수에 비례. */
 const EXP_PER_ENEMY_LEVEL = 9;
 
@@ -38,10 +42,10 @@ export interface CharacterState {
   level: number;
   exp: number;
   charm: number;
-  stats: Combatant['stats'];
+  /** 장비를 빼고 순수하게 캐릭터가 가진 능력치 */
+  baseStats: Combatant['stats'];
   hp: number;
   skills: string[];
-  spirits: string[];
 }
 
 export interface PendingBattle {
@@ -56,7 +60,7 @@ export interface ResolvedBattle extends PendingBattle {
   result: BattleResult;
   stance: Stance;
   /** 전투 후 적용될 변화. UI가 결과 화면에 쓴다. */
-  rewards: { exp: number; levelUps: number; captured: PetInstance | null };
+  rewards: { exp: number; levelUps: number; captured: PetInstance | null; stones: number };
   /**
    * 재생이 끝나야 반영되는 상태.
    *
@@ -64,17 +68,22 @@ export interface ResolvedBattle extends PendingBattle {
    * 파티 목록에 잡은 펫이 나타난다 — 결과를 미리 흘리는 셈이다. 재생이
    * 끝날 때 finishBattle이 적용한다.
    */
-  applied: { party: PetInstance[]; box: PetInstance[]; heroHp: number };
+  applied: { party: PetInstance[]; box: PetInstance[]; heroHp: number; inventory: Inventory; stones: number };
 }
 
 export interface GameState {
-  screen: 'field' | 'stance' | 'battle' | 'result';
+  screen: 'field' | 'stance' | 'battle' | 'shop' | 'pack';
   player: PlayerState;
   danger: DangerState;
   character: CharacterState;
   /** 보유 펫. 앞의 4마리가 전투에 나간다. */
   party: PetInstance[];
   box: PetInstance[];
+  inventory: Inventory;
+  equipment: Equipment;
+  stones: number;
+  /** 지금 열려 있는 상점 */
+  shop: Shop | null;
   rngState: RngState;
   tick: number;
   messages: string[];
@@ -86,19 +95,26 @@ export interface GameState {
   chooseStance: (stance: Stance) => void;
   finishBattle: () => void;
   say: (text: string) => void;
+
+  openPack: () => void;
+  closeScreen: () => void;
+  equipItem: (itemId: string) => void;
+  unequipSlot: (slot: keyof Equipment) => void;
+  useItem: (itemId: string) => void;
+  buyItem: (itemId: string, qty: number) => void;
+  sellItem: (itemId: string, qty: number) => void;
 }
 
 function startingCharacter(): CharacterState {
-  const stats = { hp: 260, atk: 34, def: 26, spd: 28 };
+  const baseStats = { hp: 260, atk: 34, def: 26, spd: 28 };
   return {
     name: '탐험가',
     level: 5,
     exp: 0,
     charm: 12,
-    stats,
-    hp: stats.hp,
+    baseStats,
+    hp: baseStats.hp,
     skills: ['strike', 'gore', 'harden', 'mend'],
-    spirits: ['stoneSkin'],
   };
 }
 
@@ -120,6 +136,18 @@ function startingParty(seed: RngState): { party: PetInstance[]; rngState: RngSta
 const START_SEED = 20260804 >>> 0;
 const start = startingParty(START_SEED);
 
+/** 시작 소지품. 밧줄 없이 나가면 첫 포획이 불가능하다. */
+function startingPack(): { inventory: Inventory; equipment: Equipment } {
+  let inv: Inventory = [];
+  for (const [id, qty] of [['herbSmall', 3], ['ropeCrude', 5], ['meatChunk', 2]] as const) {
+    inv = addItem(inv, id, qty).inv;
+  }
+  const put = addItem(inv, 'clubStone', 1).inv;
+  const worn = equip(emptyEquipment(), put, 'clubStone');
+  return { inventory: worn.inventory, equipment: worn.equipment };
+}
+const pack = startingPack();
+
 export const useGame = create<GameState>((set, get) => ({
   screen: 'field',
   player: createPlayer(START_MAP, getMap(START_MAP).spawn.x, getMap(START_MAP).spawn.y),
@@ -127,6 +155,10 @@ export const useGame = create<GameState>((set, get) => ({
   character: startingCharacter(),
   party: start.party,
   box: [],
+  inventory: pack.inventory,
+  equipment: pack.equipment,
+  stones: CURRENCY.starting,
+  shop: null,
   rngState: start.rngState,
   tick: 0,
   messages: ['돌바람 마을. 남쪽 길로 나가면 초원이다.'],
@@ -164,6 +196,14 @@ export const useGame = create<GameState>((set, get) => ({
       return;
     }
 
+    // 상점 문 앞에 서면 열린다. 문은 맵 데이터에 이미 있는 칸이라 따로 표시할
+    // 게 없고, 상점 위치가 economy.json 한 곳에만 있다.
+    const shop = shopAt(map.id, player.tile.x, player.tile.y);
+    if (shop) {
+      set({ screen: 'shop', shop, player, rngState: rng.getState(), messages: [...s.messages.slice(-4), `${shop.name} — ${shop.greeting}`] });
+      return;
+    }
+
     const step = stepDanger(map, player.tile, s.danger, rng);
     if (!step.triggered || !step.zone) {
       set({ player, danger: step.danger, rngState: rng.getState() });
@@ -179,9 +219,10 @@ export const useGame = create<GameState>((set, get) => ({
         name: s.character.name,
         level: s.character.level,
         charm: s.character.charm,
-        stats: s.character.stats,
+        // 장비 보정과 깃든 정령이 여기서 전투로 넘어간다
+        stats: applyEquipment(s.character.baseStats, s.equipment),
         skills: s.character.skills,
-        spirits: s.character.spirits,
+        spirits: availableSpirits(s.equipment),
       }),
       ...s.party.slice(0, 4).map((p, i) => petToCombatant(p, i >= 2 ? 'back' : 'front')),
     ];
@@ -209,7 +250,13 @@ export const useGame = create<GameState>((set, get) => ({
       allies: s.pending.allies,
       enemies: s.pending.enemies,
       seed: s.pending.seed,
-      commandSource: createStanceSource(stance, catalog, enemyAI, CAPTURE_TOOL),
+      // 가진 것 중 가장 좋은 밧줄을 쓴다
+      commandSource: createStanceSource(
+        stance,
+        catalog,
+        enemyAI,
+        CAPTURE_TOOLS.find((id) => s.inventory.some((x) => x.itemId === id)) ?? 'ropeCrude',
+      ),
     });
 
     // ── 전투 결과를 개체에 반영한다 ──
@@ -234,6 +281,15 @@ export const useGame = create<GameState>((set, get) => ({
           : next.loyalty;
       return { ...next, loyalty };
     });
+
+    const stones = won ? stoneReward(s.pending.enemies.map((e) => e.level)) : 0;
+
+    // 던진 밧줄은 없어진다. 성공하든 실패하든 소모품이다.
+    let nextInventory = s.inventory;
+    const ropeId =
+      CAPTURE_TOOLS.find((id) => s.inventory.some((x) => x.itemId === id)) ?? 'ropeCrude';
+    const throws = result.log.filter((e) => e.type === 'captureAttempt').length;
+    if (throws > 0) nextInventory = removeItem(nextInventory, ropeId, throws).inv;
 
     // ── 포획 ──
     let captured: PetInstance | null = null;
@@ -266,11 +322,13 @@ export const useGame = create<GameState>((set, get) => ({
         ...s.pending,
         result,
         stance,
-        rewards: { exp: expGain, levelUps, captured },
+        rewards: { exp: expGain, levelUps, captured, stones },
         applied: {
           party: captured && party.length < 4 ? [...party, captured] : party,
           box: captured && party.length >= 4 ? [...s.box, captured] : s.box,
           heroHp: Math.max(1, heroFinal?.hp ?? s.character.hp),
+          inventory: nextInventory,
+          stones: s.stones + stones,
         },
       },
       pending: null,
@@ -301,13 +359,148 @@ export const useGame = create<GameState>((set, get) => ({
       danger: createDanger(),
       party: r.applied.party,
       box: r.applied.box,
-      character: { ...s.character, hp: wiped ? s.character.stats.hp : r.applied.heroHp },
+      inventory: r.applied.inventory,
+      stones: r.applied.stones,
+      character: {
+        ...s.character,
+        hp: wiped ? applyEquipment(s.character.baseStats, s.equipment).hp : r.applied.heroHp,
+      },
       messages: [...s.messages.slice(-3), ...lines],
+    });
+  },
+
+  /* ─────────────── 소지품 ─────────────── */
+
+  openPack() {
+    if (get().screen === 'field') set({ screen: 'pack' });
+  },
+
+  closeScreen() {
+    const s = get();
+    if (s.screen === 'shop' || s.screen === 'pack') set({ screen: 'field', shop: null });
+  },
+
+  equipItem(itemId) {
+    const s = get();
+    const r = equip(s.equipment, s.inventory, itemId);
+    if (!r.ok) return;
+    // 장비가 최대 체력을 바꾸므로 현재 체력이 그 위로 튀지 않게 맞춘다
+    const maxHp = applyEquipment(s.character.baseStats, r.equipment).hp;
+    set({
+      equipment: r.equipment,
+      inventory: r.inventory,
+      character: { ...s.character, hp: Math.min(s.character.hp, maxHp) },
+    });
+  },
+
+  unequipSlot(slot) {
+    const s = get();
+    const r = unequip(s.equipment, s.inventory, slot);
+    if (!r.ok) return;
+    const maxHp = applyEquipment(s.character.baseStats, r.equipment).hp;
+    set({
+      equipment: r.equipment,
+      inventory: r.inventory,
+      character: { ...s.character, hp: Math.min(s.character.hp, maxHp) },
+    });
+  },
+
+  useItem(itemId) {
+    const s = get();
+    const item = ITEMS[itemId];
+    if (!item || s.inventory.every((x) => x.itemId !== itemId)) return;
+
+    if (item.kind === 'heal' && item.heal && item.heal > 0) {
+      const maxHp = applyEquipment(s.character.baseStats, s.equipment).hp;
+      if (s.character.hp >= maxHp) {
+        set({ messages: [...s.messages.slice(-4), '체력이 이미 가득하다.'] });
+        return;
+      }
+      const healed = Math.min(maxHp, s.character.hp + item.heal);
+      set({
+        inventory: removeItem(s.inventory, itemId, 1).inv,
+        character: { ...s.character, hp: healed },
+        messages: [...s.messages.slice(-4), `${item.name} — ${healed - s.character.hp} 회복`],
+      });
+      return;
+    }
+
+    if (item.kind === 'food' && item.loyalty) {
+      // 가장 충성도가 낮은 펫에게 준다. 관리가 필요한 쪽부터 챙기는 게 자연스럽다.
+      const target = s.party.reduce<PetInstance | null>(
+        (a, b) => (a === null || b.loyalty < a.loyalty ? b : a),
+        null,
+      );
+      if (!target) return;
+      set({
+        inventory: removeItem(s.inventory, itemId, 1).inv,
+        party: s.party.map((p) =>
+          p.uid === target.uid ? { ...p, loyalty: onFeed(p.loyalty, item.loyalty!) } : p,
+        ),
+        messages: [
+          ...s.messages.slice(-4),
+          `${getSpecies(target.speciesId).name}에게 ${item.name}을(를) 줬다.`,
+        ],
+      });
+      return;
+    }
+
+    set({ messages: [...s.messages.slice(-4), '지금은 쓸 수 없다.'] });
+  },
+
+  buyItem(itemId, qty) {
+    const s = get();
+    if (!s.shop) return;
+    const r = buy(s.shop, s.inventory, s.stones, itemId, qty);
+    const item = ITEMS[itemId];
+    const note =
+      r.bought > 0
+        ? `${item?.name} ${r.bought}개 샀다.`
+        : r.reason === 'money'
+          ? '스톤이 모자란다.'
+          : r.reason === 'weight'
+            ? '더 들 수 없다.'
+            : '가방이 꽉 찼다.';
+    set({ inventory: r.inventory, stones: r.stones, messages: [...s.messages.slice(-4), note] });
+  },
+
+  sellItem(itemId, qty) {
+    const s = get();
+    const r = sell(s.inventory, s.stones, itemId, qty);
+    if (r.sold === 0) return;
+    set({
+      inventory: r.inventory,
+      stones: r.stones,
+      messages: [...s.messages.slice(-4), `${ITEMS[itemId]?.name} ${r.sold}개 팔았다. +${r.stones - s.stones}`],
     });
   },
 }));
 
-/** UI가 쓰는 파생값. 스토어를 건드리지 않는다. */
+/**
+ * UI가 쓰는 파생값. 스토어를 건드리지 않는다.
+ *
+ * 장비 보정을 여러 컴포넌트가 각자 계산하면 언젠가 한 곳이 어긋난다. 한 곳에서
+ * 만들어 내려보낸다.
+ *
+ * **이걸 Zustand 셀렉터로 직접 넘기지 말 것.** 매번 새 객체를 돌려주므로
+ * 참조 비교가 항상 실패해 무한 렌더 루프가 된다. UI는 useCharacterView()로
+ * 감싸 쓴다.
+ */
+export function characterView(
+  character: CharacterState,
+  equipment: Equipment,
+  inventory: Inventory,
+) {
+  const stats = applyEquipment(character.baseStats, equipment);
+  return {
+    stats,
+    maxHp: stats.hp,
+    spirits: availableSpirits(equipment),
+    /** 가방 + 장비. 끼고 있는 물건도 몸에 얹혀 있다. */
+    carriedWeight: weightOf(inventory) + equipmentWeight(equipment),
+  };
+}
+
 export function currentDangerLevel(s: GameState) {
   const map = getMap(s.player.mapId);
   const inZone = zoneAt(map, s.player.tile.x, s.player.tile.y) !== undefined;
