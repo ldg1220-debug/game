@@ -30,6 +30,7 @@ const raw = {
   skills: load('skills'),
   spirits: load('spirits'),
   items: load('items'),
+  formula: load('formula'),
 };
 const data = validateData(raw);
 
@@ -246,6 +247,25 @@ describe('검증기가 실제로 잡아내는가', () => {
     spirits[0]!.levels[4]!.successRate = 0.01;
     const errors = validateData({ ...raw, spirits }).errors;
     expect(errors.some((e) => e.includes('성공률'))).toBe(true);
+  });
+
+  it('정령 효과와 수치가 어긋나면 실패한다', () => {
+    const spirits = clone(data.spirits);
+    const buff = spirits.find((s) => s.effect.kind === 'buff')!;
+    delete buff.effect.modifiers;
+    expect(validateData({ ...raw, spirits }).errors.some((e) => e.includes('modifiers'))).toBe(true);
+  });
+
+  it('전투 수식 상수가 뒤집히면 실패한다', () => {
+    const formula = clone(raw.formula) as Record<string, Record<string, number>>;
+    formula['element']!['disadvantage'] = 2.0;
+    expect(validateData({ ...raw, formula }).errors.some((e) => e.includes('불리 < 동일 < 유리'))).toBe(true);
+  });
+
+  it('방어 커맨드가 피해를 안 줄이면 실패한다', () => {
+    const formula = clone(raw.formula) as Record<string, Record<string, number>>;
+    formula['defend']!['damageTaken'] = 1.2;
+    expect(validateData({ ...raw, formula }).errors.some((e) => e.includes('방어 커맨드'))).toBe(true);
   });
 
   it('최상위가 배열이 아니면 실패한다', () => {

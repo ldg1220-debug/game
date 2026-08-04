@@ -153,21 +153,25 @@ const spiritLevels = (baseCost, baseRate, baseDur, basePower) =>
     power: Math.round((basePower * (1 + i * 0.25)) * 100) / 100,
   }));
 
+// effect: 전투 엔진이 이 정령으로 뭘 해야 하는지. 설명문으로는 추론할 수 없으므로
+// (석화피부=방어, 단조의심장=공격, 산들바람걸음=순발력이 전부 power 0 · oneAlly다)
+// 데이터에 명시한다.
 const spirits = [
-  ['gaiaGrasp','대지의손아귀','earth','oneEnemy',8,0.55,2,0.9,'대지가 적을 붙든다.'],
-  ['stoneSkin','석화피부','earth','oneAlly',7,0.65,2,0.0,'피부를 돌처럼 굳힌다.'],
-  ['tideCall','조수부름','water','allEnemies',12,0.50,2,0.8,'조수를 불러 적 전체를 친다.'],
-  ['healingSpring','치유의샘','water','allAllies',11,0.70,1,0.25,'샘물이 아군을 적신다.'],
-  ['emberBrand','불씨낙인','fire','oneEnemy',8,0.58,3,1.0,'낙인이 남아 지속 피해를 준다.'],
-  ['forgeHeart','단조의심장','fire','oneAlly',9,0.62,2,0.0,'공격력을 끌어올린다.'],
-  ['zephyrStep','산들바람걸음','wind','oneAlly',7,0.68,2,0.0,'순발력을 올린다.'],
-  ['tempestEye','폭풍의눈','wind','allEnemies',13,0.48,2,0.85,'폭풍이 적진을 훑는다.'],
-  ['slumberVeil','잠의장막',null,'oneEnemy',9,0.45,2,0.0,'대상을 재운다.'],
-  ['venomSeep','독기스밈',null,'oneEnemy',8,0.52,3,0.0,'독이 서서히 퍼진다.'],
-  ['wardLight','수호의빛',null,'allAllies',14,0.60,2,0.0,'아군 전체의 방어를 올린다.'],
-  ['soulTether','혼줄',null,'oneAlly',10,0.55,1,0.0,'충성도 하락을 잠시 막는다.'],
-].map(([id,name,element,target,cost,rate,dur,power,description]) => ({
-  id, name, element, target, levels: spiritLevels(cost, rate, dur, power), description,
+  ['gaiaGrasp','대지의손아귀','earth','oneEnemy',8,0.55,2,0.9,'대지가 적을 붙든다.',{kind:'damage'}],
+  ['stoneSkin','석화피부','earth','oneAlly',7,0.65,2,0.0,'피부를 돌처럼 굳힌다.',{kind:'buff',modifiers:{def:1.3}}],
+  ['tideCall','조수부름','water','allEnemies',12,0.50,2,0.8,'조수를 불러 적 전체를 친다.',{kind:'damage'}],
+  ['healingSpring','치유의샘','water','allAllies',11,0.70,1,0.25,'샘물이 아군을 적신다.',{kind:'heal'}],
+  ['emberBrand','불씨낙인','fire','oneEnemy',8,0.58,3,1.0,'낙인이 남아 지속 피해를 준다.',{kind:'ailment',ailment:'poison'}],
+  ['forgeHeart','단조의심장','fire','oneAlly',9,0.62,2,0.0,'공격력을 끌어올린다.',{kind:'buff',modifiers:{atk:1.25}}],
+  ['zephyrStep','산들바람걸음','wind','oneAlly',7,0.68,2,0.0,'순발력을 올린다.',{kind:'buff',modifiers:{spd:1.3}}],
+  ['tempestEye','폭풍의눈','wind','allEnemies',13,0.48,2,0.85,'폭풍이 적진을 훑는다.',{kind:'damage'}],
+  ['slumberVeil','잠의장막',null,'oneEnemy',9,0.45,2,0.0,'대상을 재운다.',{kind:'ailment',ailment:'sleep'}],
+  ['venomSeep','독기스밈',null,'oneEnemy',8,0.52,3,0.0,'독이 서서히 퍼진다.',{kind:'ailment',ailment:'poison'}],
+  ['wardLight','수호의빛',null,'allAllies',14,0.60,2,0.0,'아군 전체의 방어를 올린다.',{kind:'buff',modifiers:{def:1.2}}],
+  // 충성도는 전투 밖 시스템이라 전투 중에는 아무 일도 하지 않는다. Phase 3이 읽는다.
+  ['soulTether','혼줄',null,'oneAlly',10,0.55,1,0.0,'충성도 하락을 잠시 막는다.',{kind:'loyaltyGuard'}],
+].map(([id,name,element,target,cost,rate,dur,power,description,effect]) => ({
+  id, name, element, target, effect, levels: spiritLevels(cost, rate, dur, power), description,
 }));
 
 /* ── 아이템 ── */

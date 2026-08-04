@@ -4,6 +4,9 @@
     "name": "대지의손아귀",
     "element": "earth",
     "target": "oneEnemy",
+    "effect": {
+      "kind": "damage"
+    },
     "levels": [
       {
         "cost": 8,
@@ -43,6 +46,12 @@
     "name": "석화피부",
     "element": "earth",
     "target": "oneAlly",
+    "effect": {
+      "kind": "buff",
+      "modifiers": {
+        "def": 1.3
+      }
+    },
     "levels": [
       {
         "cost": 7,
@@ -82,6 +91,9 @@
     "name": "조수부름",
     "element": "water",
     "target": "allEnemies",
+    "effect": {
+      "kind": "damage"
+    },
     "levels": [
       {
         "cost": 12,
@@ -121,6 +133,9 @@
     "name": "치유의샘",
     "element": "water",
     "target": "allAllies",
+    "effect": {
+      "kind": "heal"
+    },
     "levels": [
       {
         "cost": 11,
@@ -160,6 +175,10 @@
     "name": "불씨낙인",
     "element": "fire",
     "target": "oneEnemy",
+    "effect": {
+      "kind": "ailment",
+      "ailment": "poison"
+    },
     "levels": [
       {
         "cost": 8,
@@ -199,6 +218,12 @@
     "name": "단조의심장",
     "element": "fire",
     "target": "oneAlly",
+    "effect": {
+      "kind": "buff",
+      "modifiers": {
+        "atk": 1.25
+      }
+    },
     "levels": [
       {
         "cost": 9,
@@ -238,6 +263,12 @@
     "name": "산들바람걸음",
     "element": "wind",
     "target": "oneAlly",
+    "effect": {
+      "kind": "buff",
+      "modifiers": {
+        "spd": 1.3
+      }
+    },
     "levels": [
       {
         "cost": 7,
@@ -277,6 +308,9 @@
     "name": "폭풍의눈",
     "element": "wind",
     "target": "allEnemies",
+    "effect": {
+      "kind": "damage"
+    },
     "levels": [
       {
         "cost": 13,
@@ -316,6 +350,10 @@
     "name": "잠의장막",
     "element": null,
     "target": "oneEnemy",
+    "effect": {
+      "kind": "ailment",
+      "ailment": "sleep"
+    },
     "levels": [
       {
         "cost": 9,
@@ -355,6 +393,10 @@
     "name": "독기스밈",
     "element": null,
     "target": "oneEnemy",
+    "effect": {
+      "kind": "ailment",
+      "ailment": "poison"
+    },
     "levels": [
       {
         "cost": 8,
@@ -394,6 +436,12 @@
     "name": "수호의빛",
     "element": null,
     "target": "allAllies",
+    "effect": {
+      "kind": "buff",
+      "modifiers": {
+        "def": 1.2
+      }
+    },
     "levels": [
       {
         "cost": 14,
@@ -433,6 +481,9 @@
     "name": "혼줄",
     "element": null,
     "target": "oneAlly",
+    "effect": {
+      "kind": "loyaltyGuard"
+    },
     "levels": [
       {
         "cost": 10,

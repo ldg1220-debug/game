@@ -29,6 +29,7 @@ const result = validateData({
   skills: readJson('skills'),
   spirits: readJson('spirits'),
   items: readJson('items'),
+  formula: readJson('formula'),
 });
 
 if (result.errors.length > 0) {

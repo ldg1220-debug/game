@@ -71,7 +71,7 @@
 
 - [x] **Phase 0** 프로젝트 셋업 · seeded RNG · Vitest · FastAPI 스켈레톤
 - [x] **Phase 1** 데이터 모델과 밸런스 시트 · zod 검증 게이트
-- [ ] Phase 2 전투 엔진 (가장 중요 — 건너뛰지 않는다)
+- [x] **Phase 2** 전투 엔진 (결정론 · 진형 · 상태이상 · 포획/도주)
 - [ ] Phase 3 성장 · 포획 · 충성도
 - [ ] Phase 4 맵 · 이동 · 인카운터
 - [ ] Phase 5 인벤토리 · 장비 · 정령 · 상점
@@ -97,6 +97,31 @@ pnpm build          # validate:data → tsc → vite build 순서. 위반 시 �
 
 `tests/data.test.ts` 는 통과 사례만이 아니라 **위반을 실제로 잡아내는지**도
 검사한다(상한 초과, 미지 필드, 없는 참조, 대가 없는 공격 버프 등).
+
+## 전투 엔진
+
+```ts
+simulateBattle({ allies, enemies, seed }) → { log, winner, finalState, capturedPet? }
+```
+
+`src/engine/battle/` — 순수 TypeScript다. import 하는 건 자기 자신과 `src/data/*.json`
+뿐이고, React·DOM·브라우저 API는 하나도 없다. 입력 객체를 mutate 하지 않는다.
+
+- `types.ts` 구조와 `BattleEvent` 목록
+- `formula.ts` 수식의 **모양**만. 숫자는 `src/data/formula.json` 에 있다
+- `catalog.ts` 데이터를 엔진이 쓰는 모양으로. 주입식이라 테스트가 가짜를 넣을 수 있다
+- `ai.ts` 기본 커맨드 소스. UI가 붙으면 아군 쪽만 플레이어 입력으로 갈아낀다
+- `index.ts` `simulateBattle`
+
+로그로 전투를 재생할 수 있는지는 콘솔 뷰어로 확인한다. 이 뷰어는 상태를 다시
+계산하지 않고 `BattleEvent` 만 읽는다 — 렌더러가 지켜야 할 선의 실물 예시다.
+
+```
+pnpm battle:demo [seed]
+```
+
+Phase 3이 채울 자리를 두 곳 비워뒀다. `CaptureResolver`(레벨 역전·매력 보정을
+포함한 완전한 포획 공식)와 `capturedPet.hpRatioAtCapture`(초기 충성도 산정 근거)다.
 
 ## 기존 `client/` 디렉터리에 관해
 

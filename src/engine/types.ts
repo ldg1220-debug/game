@@ -158,11 +158,26 @@ export interface Skill {
  * 장비한 아이템이 가진 정령만 전투에서 쓸 수 있다. 이게 원작 마법 시스템의
  * 핵심 구조라, 캐릭터에 스킬을 붙이는 흔한 방식으로 바꾸지 않는다.
  */
+/**
+ * 정령이 전투에서 하는 일.
+ *
+ * 설명문이나 수치로는 추론할 수 없다 — 방어 버프·공격 버프·속도 버프가 전부
+ * `power: 0, target: 'oneAlly'` 로 똑같이 생겼기 때문이다. 그래서 명시한다.
+ */
+export type SpiritEffectKind = 'damage' | 'heal' | 'buff' | 'ailment' | 'loyaltyGuard';
+
+export interface SpiritEffect {
+  kind: SpiritEffectKind;
+  ailment?: Ailment;
+  modifiers?: { atk?: number; def?: number; spd?: number };
+}
+
 export interface Spirit {
   id: string;
   name: string;
   element: Element | null;
   target: SkillTarget;
+  effect: SpiritEffect;
   /** 레벨 1~5. 인덱스 0이 레벨 1이다. */
   levels: {
     cost: number;

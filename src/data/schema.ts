@@ -96,6 +96,11 @@ export const SpiritSchema = z.strictObject({
   name: z.string().min(1),
   element: ElementSchema.nullable(),
   target: TargetSchema,
+  effect: z.strictObject({
+    kind: z.enum(['damage', 'heal', 'buff', 'ailment', 'loyaltyGuard']),
+    ailment: AilmentSchema.optional(),
+    modifiers: ModifiersSchema.optional(),
+  }),
   levels: z
     .array(
       z.strictObject({
@@ -130,6 +135,105 @@ export const ItemSchema = z.strictObject({
   loyalty: z.number().int().positive().optional(),
   description: z.string().min(1),
 });
+
+/* ─────────────── 전투 수식 상수 ─────────────── */
+
+const ratio = z.number().positive().finite();
+
+/**
+ * formula.json — 전투 수식의 모든 상수.
+ *
+ * 코드에는 식의 모양만 있고 숫자는 전부 여기 있으므로, 이 파일이 깨지면 전투가
+ * 통째로 이상해진다. 그래서 다른 데이터와 같은 관문을 통과시킨다.
+ */
+export const FormulaSchema = z.strictObject({
+  battle: z.strictObject({
+    maxRounds: z.number().int().min(1),
+    maxPartySize: z.number().int().min(1),
+    energyRegenPerRound: z.number().int().nonnegative(),
+  }),
+  order: z.strictObject({ jitterMin: ratio, jitterMax: ratio }),
+  hit: z.strictObject({
+    base: z.number().gt(0).max(1),
+    spdWeight: z.number().nonnegative(),
+    min: z.number().gt(0).max(1),
+    max: z.number().gt(0).max(1),
+  }),
+  damage: z.strictObject({
+    defFactor: z.number().nonnegative(),
+    varianceMin: ratio,
+    varianceMax: ratio,
+    floor: z.number().min(1),
+  }),
+  element: z.strictObject({
+    advantage: ratio,
+    neutral: ratio,
+    disadvantage: ratio,
+    primaryWeight: z.number().gt(0).lt(1),
+    secondaryWeight: z.number().gt(0).lt(1),
+  }),
+  crit: z.strictObject({
+    base: z.number().min(0).max(1),
+    spdWeight: z.number().nonnegative(),
+    multiplier: z.number().min(1),
+    max: z.number().gt(0).max(1),
+  }),
+  row: z.strictObject({ backTakenPhysical: ratio, backDealtMelee: ratio }),
+  defend: z.strictObject({ damageTaken: ratio }),
+  ailment: z.strictObject({
+    resistBase: z.number().min(0).max(1),
+    resistSpdWeight: z.number().nonnegative(),
+    resistMax: z.number().min(0).lt(1),
+    paralysisMinTurns: z.number().int().min(1),
+    paralysisMaxTurns: z.number().int().min(1),
+    poisonMaxHpRatio: z.number().gt(0).lt(1),
+  }),
+  flee: z.strictObject({
+    base: z.number().min(0).max(1),
+    spdWeight: z.number().nonnegative(),
+    min: z.number().min(0).max(1),
+    max: z.number().gt(0).max(1),
+  }),
+  capture: z.strictObject({
+    hpExponent: z.number().positive(),
+    min: z.number().gt(0).max(1),
+    max: z.number().gt(0).max(1),
+    escapeOnFail: z.number().min(0).max(1),
+  }),
+});
+
+/** 스키마만으로는 못 잡는 관계식. min>max 같은 건 게임을 조용히 망가뜨린다. */
+function checkFormula(raw: unknown, errors: string[]): void {
+  const parsed = FormulaSchema.safeParse(raw);
+  if (!parsed.success) {
+    errors.push(...formatIssues('formula', parsed.error));
+    return;
+  }
+  const c = parsed.data;
+  const pairs: [string, number, number][] = [
+    ['order.jitter', c.order.jitterMin, c.order.jitterMax],
+    ['hit', c.hit.min, c.hit.max],
+    ['damage.variance', c.damage.varianceMin, c.damage.varianceMax],
+    ['flee', c.flee.min, c.flee.max],
+    ['capture', c.capture.min, c.capture.max],
+    ['ailment.paralysisTurns', c.ailment.paralysisMinTurns, c.ailment.paralysisMaxTurns],
+  ];
+  for (const [name, lo, hi] of pairs) {
+    if (lo > hi) errors.push(`formula.${name}: min(${lo})이 max(${hi})보다 크다`);
+  }
+  if (Math.abs(c.element.primaryWeight + c.element.secondaryWeight - 1) > 1e-9) {
+    errors.push('formula.element: primaryWeight + secondaryWeight가 1이 아니다');
+  }
+  if (!(c.element.disadvantage < c.element.neutral && c.element.neutral < c.element.advantage)) {
+    errors.push('formula.element: 불리 < 동일 < 유리 순서가 아니다');
+  }
+  if (c.defend.damageTaken >= 1) {
+    errors.push('formula.defend: 방어 커맨드가 피해를 줄이지 않는다');
+  }
+  if (c.row.backTakenPhysical >= 1 || c.row.backDealtMelee >= 1) {
+    errors.push('formula.row: 후열 보정이 감소가 아니다');
+  }
+}
 
 /* ─────────────── 스키마 ↔ 타입 동기화 ───────────────
  *
@@ -243,6 +347,17 @@ function checkSkillShape(skills: Skill[], errors: string[]): void {
 /** 정령 레벨은 올릴수록 나아져야 한다. 아니면 레벨업이 손해가 된다. */
 function checkSpiritLevels(spirits: Spirit[], errors: string[]): void {
   for (const sp of spirits) {
+    const e = sp.effect;
+    if (e.kind === 'ailment' && !e.ailment) {
+      errors.push(`spirits(${sp.id}): ailment 정령인데 걸 상태이상이 없다`);
+    }
+    if (e.kind === 'buff' && !e.modifiers) {
+      errors.push(`spirits(${sp.id}): buff 정령인데 modifiers가 없다`);
+    }
+    if ((e.kind === 'damage' || e.kind === 'heal') && sp.levels.some((l) => l.power <= 0)) {
+      errors.push(`spirits(${sp.id}): ${e.kind} 정령인데 위력이 0인 레벨이 있다`);
+    }
+
     for (let i = 1; i < sp.levels.length; i++) {
       const prev = sp.levels[i - 1]!;
       const cur = sp.levels[i]!;
@@ -317,6 +432,7 @@ export function validateData(raw: {
   skills: unknown;
   spirits: unknown;
   items: unknown;
+  formula?: unknown;
 }): ValidationResult {
   const errors: string[] = [];
   const result: ValidationResult = {
@@ -337,6 +453,7 @@ export function validateData(raw: {
   checkSpiritLevels(result.spirits, errors);
   checkItemShape(result.items, errors);
   checkReferences(result);
+  if (raw.formula !== undefined) checkFormula(raw.formula, errors);
 
   return result;
 }

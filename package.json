@@ -9,7 +9,8 @@
     "validate:data": "vite-node tools/validate-data.ts",
     "build": "pnpm validate:data && tsc -b && vite build",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "battle:demo": "vite-node tools/battle-demo.ts"
   },
   "dependencies": {
     "react": "^18.3.1",
