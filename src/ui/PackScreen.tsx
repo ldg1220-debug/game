@@ -3,8 +3,9 @@ import { growthScore } from '../engine/types';
 import { EQUIP_SLOTS, SLOT_LABEL } from '../game/equipment';
 import { getSpecies } from '../game/party';
 import { activeQuests, objectiveProgress, objectiveTarget, objectiveText } from '../game/quests';
+import { describeSave, saveFileName, serializeSave } from '../game/save';
 import { useWorldView } from './useCharacterView';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ITEMS as ITEMS_INDEX, getItem, inventoryStatus, sortForDisplay } from '../game/inventory';
 import { MAPS } from '../game/maps';
 import { SPIRITS_BY_ID } from '../game/party';
@@ -141,6 +142,59 @@ function nameOf(id: string): string {
   }
 }
 
+/**
+ * 세이브 — 파일로 내려받고 올린다.
+ *
+ * 브라우저 저장소가 아니라 파일이다. localStorage는 캐시를 지우면 같이 날아가고,
+ * 유저는 그게 세이브인 줄 모른다. 파일이면 어디에 있는지 눈에 보이고 백업도
+ * 유저가 직접 할 수 있다. (서버 보관은 /saves API에 있다.)
+ */
+function SaveRow() {
+  const exportSave = useGame((s) => s.exportSave);
+  const importSave = useGame((s) => s.importSave);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const download = () => {
+    const save = exportSave();
+    const blob = new Blob([serializeSave(save)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = saveFileName(save);
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const upload = async (file: File | undefined) => {
+    if (!file) return;
+    importSave(await file.text());
+    // 같은 파일을 다시 고를 수 있게 비운다
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const current = exportSave();
+  return (
+    <div className="row spread" style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
+      <span className="tiny muted">{describeSave(current)}</span>
+      <div className="row">
+        <button className="small" onClick={download}>
+          세이브 내려받기
+        </button>
+        <button className="small" onClick={() => fileRef.current?.click()}>
+          불러오기
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/json,.json"
+          style={{ display: 'none' }}
+          onChange={(e) => void upload(e.target.files?.[0])}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function PackScreen() {
   const inventory = useGame((s) => s.inventory);
   const equipment = useGame((s) => s.equipment);
@@ -252,6 +306,8 @@ export function PackScreen() {
             );
           })}
         </div>
+
+        <SaveRow />
       </div>
     </div>
   );

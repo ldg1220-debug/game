@@ -37,46 +37,75 @@ const CAPTURE = { common: 0.42, uncommon: 0.30, rare: 0.18, epic: 0.08 };
 /** id, 이름, 속성쌍, 희귀도, 기초스탯 배수, 스킬풀 */
 const SPECIES = [
   // ── 지(earth) ──
-  ['bouldershell', '바위등딱지', 'earth', null,    'common',   [1.15, 0.90, 1.25, 0.75], ['strike','harden','stoneThrow']],
+  ['bouldershell', '바위등딱지', 'earth', null,    'common',   [1.15, 0.90, 1.25, 0.75], ['stoneThrow','burrow','harden']],
   ['dustmole',     '흙두더지',   'earth', null,    'common',   [0.95, 1.00, 1.00, 1.05], ['strike','burrow','stoneThrow']],
   ['cragox',       '돌뿔소',     'earth', 'fire',  'uncommon', [1.20, 1.10, 1.10, 0.80], ['gore','harden','quake','ironWall']],
-  ['vinecarapace', '넝쿨거북',   'earth', 'water', 'uncommon', [1.10, 0.85, 1.30, 0.80], ['strike','ironWall','regrow','bind']],
-  ['granitewarden','화강암거인', 'earth', null,    'rare',     [1.30, 1.15, 1.35, 0.70], ['quake','ironWall','guardBreak','earthAura']],
-  ['terrasovereign','대지의수호수','earth','wind', 'epic',     [1.35, 1.20, 1.30, 0.90], ['quake','earthAura','ironWall','guardBreak','regrow']],
+  ['vinecarapace', '넝쿨거북',   'earth', 'water', 'uncommon', [1.10, 0.85, 1.30, 0.80], ['stoneThrow','ironWall','regrow','bind']],
+  ['granitewarden','화강암거인', 'earth', null,    'rare',     [1.30, 1.15, 1.35, 0.70], ['burrow','quake','ironWall','guardBreak']],
+  ['terrasovereign','대지의수호수','earth','wind', 'epic',     [1.35, 1.20, 1.30, 0.90], ['burrow','quake','earthAura','frenzy','ironWall']],
   // ── 수(water) ──
   ['dewtail',      '물방울꼬리', 'water', null,    'common',   [0.90, 0.95, 0.90, 1.15], ['splash','mist','strike']],
   ['brookotter',   '여울수달',   'water', null,    'common',   [0.95, 1.05, 0.85, 1.15], ['splash','strike','lull']],
-  ['abyssray',     '심해가오리', 'water', 'wind',  'uncommon', [1.00, 1.10, 0.95, 1.20], ['tidalWave','lull','venomSpine']],
+  ['abyssray',     '심해가오리', 'water', 'wind',  'uncommon', [1.00, 1.10, 0.95, 1.20], ['splash','tidalWave','mist','harden']],
   ['frostscale',   '서리비늘',   'water', null,    'uncommon', [1.05, 1.05, 1.10, 1.00], ['splash','frostArmor','mist','waterAura']],
-  ['currentwyrm',  '해류이무기', 'water', 'earth', 'rare',     [1.20, 1.20, 1.05, 1.10], ['tidalWave','bind','waterAura','venomSpine']],
-  ['abysslord',    '심연의군주', 'water', null,    'epic',     [1.30, 1.25, 1.15, 1.05], ['tidalWave','waterAura','lull','guardBreak','mend']],
+  ['currentwyrm',  '해류이무기', 'water', 'earth', 'rare',     [1.20, 1.20, 1.05, 1.10], ['splash','tidalWave','waterAura','guardBreak']],
+  ['abysslord',    '심연의군주', 'water', null,    'epic',     [1.30, 1.25, 1.15, 1.05], ['splash','tidalWave','waterAura','frenzy','mend']],
   // ── 화(fire) ──
   ['emberfox',     '불씨여우',   'fire',  null,    'common',   [0.88, 1.10, 0.82, 1.15], ['scorch','strike','flare']],
   ['ashnewt',      '잿빛도롱뇽', 'fire',  'earth', 'common',   [0.95, 1.05, 0.95, 0.98], ['scorch','venomSpine','strike']],
   ['blazeboar',    '화염멧돼지', 'fire',  null,    'uncommon', [1.15, 1.20, 1.00, 0.95], ['gore','flare','frenzy']],
-  ['magmasnail',   '용암달팽이', 'fire',  'earth', 'uncommon', [1.20, 0.95, 1.30, 0.65], ['scorch','ironWall','harden','fireAura']],
-  ['plumewing',    '불꽃깃새',   'fire',  'wind',  'rare',     [0.95, 1.25, 0.90, 1.35], ['flare','gale','fireAura','frenzy']],
-  ['pyrarch',      '화산의패자', 'fire',  'earth', 'epic',     [1.30, 1.35, 1.10, 1.00], ['flare','fireAura','frenzy','guardBreak','quake']],
+  ['magmasnail',   '용암달팽이', 'fire',  'earth', 'uncommon', [1.20, 0.95, 1.30, 0.65], ['scorch','flare','harden','fireAura']],
+  ['plumewing',    '불꽃깃새',   'fire',  'wind',  'rare',     [0.95, 1.25, 0.90, 1.35], ['scorch','flare','fireAura','guardBreak']],
+  ['pyrarch',      '화산의패자', 'fire',  'earth', 'epic',     [1.30, 1.35, 1.10, 1.00], ['scorch','flare','fireAura','frenzy3','mend']],
   // ── 풍(wind) ──
-  ['breezefinch',  '바람참새',   'wind',  null,    'common',   [0.82, 0.95, 0.80, 1.25], ['gale','strike','feint']],
-  ['meadowhare',   '초원토끼',   'wind',  'earth', 'common',   [0.88, 0.92, 0.88, 1.22], ['strike','feint','lull']],
-  ['gustwolf',     '질풍늑대',   'wind',  null,    'uncommon', [1.00, 1.20, 0.92, 1.25], ['gale','frenzy','feint','taunt']],
-  ['whirlstag',    '회오리사슴', 'wind',  'water', 'uncommon', [1.05, 1.05, 1.00, 1.20], ['gale','windAura','mend','feint']],
-  ['stormfalcon',  '폭풍매',     'wind',  'water', 'rare',     [0.95, 1.30, 0.88, 1.40], ['gale','windAura','guardBreak','feint']],
-  ['skysuzerain',  '창공의주인', 'wind',  'fire',  'epic',     [1.15, 1.30, 1.05, 1.40], ['gale','windAura','frenzy','guardBreak','mend']],
+  ['breezefinch',  '바람참새',   'wind',  null,    'common',   [0.82, 0.95, 0.80, 1.25], ['windSlash','gale','feint']],
+  ['meadowhare',   '초원토끼',   'wind',  'earth', 'common',   [0.88, 0.92, 0.88, 1.22], ['windSlash','strike','lull']],
+  ['gustwolf',     '질풍늑대',   'wind',  null,    'uncommon', [1.00, 1.20, 0.92, 1.25], ['windSlash','gale','frenzy','feint']],
+  ['whirlstag',    '회오리사슴', 'wind',  'water', 'uncommon', [1.05, 1.05, 1.00, 1.20], ['windSlash','gale','windAura','mend']],
+  ['stormfalcon',  '폭풍매',     'wind',  'water', 'rare',     [0.95, 1.30, 0.88, 1.40], ['windSlash','gale','windAura','guardBreak']],
+  ['skysuzerain',  '창공의주인', 'wind',  'fire',  'epic',     [1.15, 1.30, 1.05, 1.40], ['windSlash','gale','windAura','frenzy','mend']],
 ];
 
 const BASE = { hp: 42, atk: 11, def: 10, spd: 11 };
-const pets = SPECIES.map(([id, name, primary, secondary, rarity, mult, pool]) => ({
+
+/**
+ * 스탯의 실제 전투 가치.
+ *
+ * 짐작이 아니라 측정값이다 — 기준 개체에서 스탯 하나만 +10% 하고 400회씩
+ * 붙여 승률 초과분을 잰 결과다(tools/simulate.ts 로 재현 가능). 공격이 가장
+ * 크고, 방어가 가장 작다. 순발력은 행동 순서 때문에 체력만큼 값이 나간다.
+ */
+const STAT_VALUE = { hp: 1.00, atk: 1.35, def: 0.70, spd: 0.97 };
+
+/**
+ * 등급별 스탯 예산.
+ *
+ * 같은 등급 안에서는 **총량이 같아야** 한다. 총량이 다르면 배분이 어떻든 한쪽이
+ * 그냥 더 세고, 그 종을 고를 이유가 사라진다. 종의 개성은 총량이 아니라
+ * 배분(탱커냐 딜러냐)에서 나와야 한다.
+ */
+const BUDGET = { common: 4.00, uncommon: 4.25, rare: 4.55, epic: 4.85 };
+
+/** 모양은 유지한 채 가중 합만 목표치에 맞춘다. */
+function normalize(mult, rarity) {
+  const weighted = mult[0] * STAT_VALUE.hp + mult[1] * STAT_VALUE.atk + mult[2] * STAT_VALUE.def + mult[3] * STAT_VALUE.spd;
+  const k = BUDGET[rarity] / weighted;
+  return mult.map((v) => v * k);
+}
+
+const pets = SPECIES.map(([id, name, primary, secondary, rarity, rawMult, pool]) => ({
   id,
   name,
   element: { primary, secondary },
-  baseStats: {
-    hp: Math.round(BASE.hp * mult[0]),
-    atk: Math.round(BASE.atk * mult[1] * 10) / 10,
-    def: Math.round(BASE.def * mult[2] * 10) / 10,
-    spd: Math.round(BASE.spd * mult[3] * 10) / 10,
-  },
+  baseStats: (() => {
+    const mult = normalize(rawMult, rarity);
+    return {
+      hp: Math.round(BASE.hp * mult[0]),
+      atk: Math.round(BASE.atk * mult[1] * 10) / 10,
+      def: Math.round(BASE.def * mult[2] * 10) / 10,
+      spd: Math.round(BASE.spd * mult[3] * 10) / 10,
+    };
+  })(),
   growthRange: GROWTH[rarity],
   skillPool: pool,
   captureBaseRate: CAPTURE[rarity],
@@ -107,6 +136,7 @@ const skills = [
   S('splash','물살치기','single','water','oneEnemy',1.15,5,0.93,{description:'물살로 후려친다.'}),
   S('scorch','불사르기','single','fire','oneEnemy',1.20,5,0.90,{description:'불길로 태운다.'}),
   S('burrow','땅뚫기','single','earth','oneEnemy',1.25,7,0.88,{description:'땅속에서 기습한다.'}),
+  S('windSlash','칼바람','single','wind','oneEnemy',1.15,5,0.93,{description:'바람을 날로 세워 벤다.'}),
   S('venomSpine','독가시','single',null,'oneEnemy',0.85,6,0.90,{ailment:'poison',duration:4,description:'독을 묻힌 가시로 찌른다.'}),
   // 전체 공격
   S('quake','대지흔들기','aoe','earth','allEnemies',0.85,14,0.88,{description:'땅을 흔들어 전열을 무너뜨린다.'}),

@@ -45,6 +45,7 @@ import type { EncounterZone } from './mapTypes';
 import { createPlayer, stepMovement, type MoveInput, type PlayerState } from './movement';
 import { getSpecies, makeCharacter, petToCombatant, rollEncounterParty } from './party';
 import { createStanceSource, type Stance } from './stances';
+import { SAVE_VERSION, loadSave, type SaveFile } from './save';
 
 const START_MAP = 'village';
 /** 포획 태세가 쓰는 밧줄. 가방에 있는 것 중 가장 좋은 걸 고른다. */
@@ -131,6 +132,10 @@ export interface GameState {
   advanceDialogue: () => void;
   evolvePet: (uid: string, mode: EvolveMode) => void;
   rerollPet: (uid: string) => void;
+  /** 지금 상태를 세이브 파일로. 일시적인 것(상점·대화·전투)은 담지 않는다. */
+  exportSave: () => SaveFile;
+  /** 세이브 문자열을 읽어 적용한다. 실패하면 이유만 메시지로 남기고 상태는 그대로다. */
+  importSave: (text: string) => boolean;
   equipItem: (itemId: string) => void;
   unequipSlot: (slot: keyof Equipment) => void;
   useItem: (itemId: string) => void;
@@ -723,6 +728,68 @@ export const useGame = create<GameState>((set, get) => ({
             ? '더 들 수 없다.'
             : '가방이 꽉 찼다.';
     set({ inventory: r.inventory, stones: r.stones, messages: [...s.messages.slice(-4), note] });
+  },
+
+  /* ─────────────── 세이브 ─────────────── */
+
+  exportSave() {
+    const s = get();
+    return {
+      version: SAVE_VERSION,
+      savedAt: Date.now(),
+      player: s.player,
+      character: s.character,
+      party: s.party,
+      box: s.box,
+      inventory: s.inventory,
+      equipment: s.equipment,
+      stones: s.stones,
+      questLog: s.questLog,
+      dex: s.dex,
+      visited: s.visited,
+      danger: s.danger,
+      rngState: s.rngState,
+      tick: s.tick,
+    };
+  },
+
+  importSave(text) {
+    const s = get();
+    const r = loadSave(text);
+    if (!r.save) {
+      set({ messages: [...s.messages.slice(-4), r.message ?? '세이브를 읽지 못했다.'] });
+      return false;
+    }
+    const save = r.save;
+    const lines = [`불러왔다 — Lv.${save.character.level} · ${save.visited.length}개 지역`];
+    if (r.migratedFrom !== undefined) {
+      lines.push(`버전 ${r.migratedFrom} 세이브를 ${SAVE_VERSION}로 올렸다.`);
+    }
+
+    // 화면은 반드시 필드로. 저장 시점의 화면을 복원하려 하면 그 화면이
+    // 참조하던 객체가 없어 터진다.
+    set({
+      screen: 'field',
+      shop: null,
+      talking: null,
+      pending: null,
+      resolved: null,
+      player: save.player,
+      character: save.character,
+      party: save.party,
+      box: save.box,
+      inventory: save.inventory,
+      equipment: save.equipment,
+      stones: save.stones,
+      questLog: save.questLog,
+      dex: save.dex,
+      visited: save.visited,
+      danger: save.danger,
+      rngState: save.rngState,
+      tick: save.tick,
+      messages: lines,
+    });
+    return true;
   },
 
   sellItem(itemId, qty) {

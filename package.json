@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "battle:demo": "vite-node tools/battle-demo.ts",
     "gen:maps": "node tools/gen-maps.mjs",
-    "gen": "pnpm gen:data && pnpm gen:maps"
+    "gen": "pnpm gen:data && pnpm gen:maps",
+    "simulate": "vite-node tools/simulate.ts"
   },
   "dependencies": {
     "react": "^18.3.1",

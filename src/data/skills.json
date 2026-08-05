@@ -66,6 +66,17 @@
     "description": "땅속에서 기습한다."
   },
   {
+    "id": "windSlash",
+    "name": "칼바람",
+    "archetype": "single",
+    "element": "wind",
+    "target": "oneEnemy",
+    "power": 1.15,
+    "cost": 5,
+    "accuracy": 0.93,
+    "description": "바람을 날로 세워 벤다."
+  },
+  {
     "id": "venomSpine",
     "name": "독가시",
     "archetype": "single",

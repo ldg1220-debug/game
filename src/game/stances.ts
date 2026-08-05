@@ -76,15 +76,39 @@ function affordableSpirit(
   return undefined;
 }
 
-function bestOffensive(unit: CombatantView, catalog: BattleCatalog): Skill | undefined {
+/**
+ * 지금 상황에서 가장 센 공격.
+ *
+ * 전체공격 가산점은 **살아 있는 적 수에 비례**해야 한다. 고정 배수를 주면
+ * 1대1에서도 전체공격을 고르는데, 전체공격은 위력이 낮게 잡혀 있어 오히려
+ * 손해다. 실제로 돌풍(0.82)만 가진 종이 몸통치기(1.0)를 두고 돌풍을 써서
+ * 승률이 20%대까지 떨어져 있었다.
+ */
+function bestOffensive(unit: CombatantView, catalog: BattleCatalog, enemyCount: number): Skill | undefined {
   const rows = known(unit, catalog).filter(
     (s) => (s.archetype === 'single' || s.archetype === 'aoe' || s.archetype === 'guardBreak') && s.power > 0,
   );
   if (rows.length === 0) return undefined;
   return rows.reduce((a, b) => {
-    const score = (s: Skill) => s.power * s.accuracy * (s.target === 'allEnemies' ? 1.6 : 1);
+    const score = (s: Skill) => s.power * s.accuracy * (s.target === 'allEnemies' ? enemyCount : 1);
     return score(b) > score(a) ? b : a;
   });
+}
+
+/** 스킬이 하나도 없거나 기본 공격이 더 나으면 평타를 친다. */
+function offensiveCommand(
+  u: CombatantView,
+  catalog: BattleCatalog,
+  targetId: string,
+  enemyCount: number,
+): BattleCommand {
+  const best = bestOffensive(u, catalog, enemyCount);
+  const basic = catalog.skills['strike'];
+  // 풀에 평타가 없어도 엔진은 평타를 칠 수 있다. 그게 더 세면 그걸 친다.
+  if (!best || (basic && basic.power * basic.accuracy > best.power * best.accuracy * (best.target === 'allEnemies' ? enemyCount : 1))) {
+    return { kind: 'attack', targetId };
+  }
+  return { kind: 'skill', skillId: best.id, targetId };
 }
 
 /**
@@ -171,7 +195,7 @@ function decide(
     if (guard && !u.modifiers.some((m) => m.sourceId === guard.id)) {
       return { kind: 'skill', skillId: guard.id, targetId: u.id };
     }
-    const atk = bestOffensive(u, catalog);
+    const atk = bestOffensive(u, catalog, alive(view.enemies).length);
     return atk ? { kind: 'skill', skillId: atk.id, targetId: target.id } : { kind: 'defend' };
   }
 
@@ -192,6 +216,5 @@ function decide(
   );
   if (brand) return { kind: 'spirit', ...brand, targetId: target.id };
 
-  const atk = bestOffensive(u, catalog);
-  return atk ? { kind: 'skill', skillId: atk.id, targetId: target.id } : { kind: 'attack', targetId: target.id };
+  return offensiveCommand(u, catalog, target.id, alive(view.enemies).length);
 }

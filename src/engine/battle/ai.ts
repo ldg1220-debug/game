@@ -87,13 +87,15 @@ function decide(
   const offensive = skills.filter(
     (s) => (s.archetype === 'single' || s.archetype === 'aoe' || s.archetype === 'guardBreak') && s.power > 0,
   );
+  // 전체공격 가산점은 살아 있는 적 수에 비례한다. 고정 배수를 주면 1대1에서도
+  // 전체공격을 골라 손해를 본다 — 전체공격은 위력이 낮게 잡혀 있기 때문이다.
+  const living = enemies.filter((e) => !e.fainted).length;
+  const score = (s: Skill) => s.power * s.accuracy * (s.target === 'allEnemies' ? living : 1);
   if (offensive.length > 0) {
-    const best = offensive.reduce((a, b) =>
-      b.power * b.accuracy * (b.target === 'allEnemies' ? 1.6 : 1) >
-      a.power * a.accuracy * (a.target === 'allEnemies' ? 1.6 : 1)
-        ? b
-        : a,
-    );
+    const best = offensive.reduce((a, b) => (score(b) > score(a) ? b : a));
+    const basic = catalog.skills['strike'];
+    // 풀에 평타가 없어도 엔진은 평타를 칠 수 있다. 그게 더 세면 그걸 친다.
+    if (basic && basic.power * basic.accuracy > score(best)) return { kind: 'attack', targetId: target.id };
     return { kind: 'skill', skillId: best.id, targetId: target.id };
   }
 

@@ -7,9 +7,9 @@
       "secondary": null
     },
     "baseStats": {
-      "hp": 48,
-      "atk": 9.9,
-      "def": 12.5,
+      "hp": 49,
+      "atk": 10,
+      "def": 12.6,
       "spd": 8.3
     },
     "growthRange": {
@@ -27,9 +27,9 @@
       }
     },
     "skillPool": [
-      "strike",
-      "harden",
-      "stoneThrow"
+      "stoneThrow",
+      "burrow",
+      "harden"
     ],
     "captureBaseRate": 0.42,
     "rarity": "common"
@@ -43,9 +43,9 @@
     },
     "baseStats": {
       "hp": 40,
-      "atk": 11,
+      "atk": 10.9,
       "def": 10,
-      "spd": 11.6
+      "spd": 11.5
     },
     "growthRange": {
       "min": {
@@ -77,8 +77,8 @@
       "secondary": "fire"
     },
     "baseStats": {
-      "hp": 50,
-      "atk": 12.1,
+      "hp": 51,
+      "atk": 12.2,
       "def": 11,
       "spd": 8.8
     },
@@ -118,10 +118,10 @@
       "secondary": "water"
     },
     "baseStats": {
-      "hp": 46,
-      "atk": 9.4,
-      "def": 13,
-      "spd": 8.8
+      "hp": 50,
+      "atk": 10.1,
+      "def": 14,
+      "spd": 9.5
     },
     "growthRange": {
       "min": {
@@ -138,7 +138,7 @@
       }
     },
     "skillPool": [
-      "strike",
+      "stoneThrow",
       "ironWall",
       "regrow",
       "bind"
@@ -155,9 +155,9 @@
     },
     "baseStats": {
       "hp": 55,
-      "atk": 12.6,
-      "def": 13.5,
-      "spd": 7.7
+      "atk": 12.9,
+      "def": 13.7,
+      "spd": 7.8
     },
     "growthRange": {
       "min": {
@@ -174,10 +174,10 @@
       }
     },
     "skillPool": [
+      "burrow",
       "quake",
       "ironWall",
-      "guardBreak",
-      "earthAura"
+      "guardBreak"
     ],
     "captureBaseRate": 0.18,
     "rarity": "rare"
@@ -190,10 +190,10 @@
       "secondary": "wind"
     },
     "baseStats": {
-      "hp": 57,
-      "atk": 13.2,
-      "def": 13,
-      "spd": 9.9
+      "hp": 58,
+      "atk": 13.5,
+      "def": 13.3,
+      "spd": 10.1
     },
     "growthRange": {
       "min": {
@@ -210,11 +210,11 @@
       }
     },
     "skillPool": [
+      "burrow",
       "quake",
       "earthAura",
-      "ironWall",
-      "guardBreak",
-      "regrow"
+      "frenzy",
+      "ironWall"
     ],
     "captureBaseRate": 0.08,
     "rarity": "epic"
@@ -228,9 +228,9 @@
     },
     "baseStats": {
       "hp": 38,
-      "atk": 10.5,
-      "def": 9,
-      "spd": 12.6
+      "atk": 10.6,
+      "def": 9.2,
+      "spd": 12.9
     },
     "growthRange": {
       "min": {
@@ -262,10 +262,10 @@
       "secondary": null
     },
     "baseStats": {
-      "hp": 40,
-      "atk": 11.6,
-      "def": 8.5,
-      "spd": 12.6
+      "hp": 39,
+      "atk": 11.3,
+      "def": 8.3,
+      "spd": 12.4
     },
     "growthRange": {
       "min": {
@@ -297,10 +297,10 @@
       "secondary": "wind"
     },
     "baseStats": {
-      "hp": 42,
-      "atk": 12.1,
-      "def": 9.5,
-      "spd": 13.2
+      "hp": 41,
+      "atk": 11.9,
+      "def": 9.4,
+      "spd": 13
     },
     "growthRange": {
       "min": {
@@ -317,9 +317,10 @@
       }
     },
     "skillPool": [
+      "splash",
       "tidalWave",
-      "lull",
-      "venomSpine"
+      "mist",
+      "harden"
     ],
     "captureBaseRate": 0.3,
     "rarity": "uncommon"
@@ -332,10 +333,10 @@
       "secondary": null
     },
     "baseStats": {
-      "hp": 44,
-      "atk": 11.6,
-      "def": 11,
-      "spd": 11
+      "hp": 45,
+      "atk": 11.7,
+      "def": 11.1,
+      "spd": 11.1
     },
     "growthRange": {
       "min": {
@@ -374,9 +375,9 @@
     },
     "baseStats": {
       "hp": 50,
-      "atk": 13.2,
-      "def": 10.5,
-      "spd": 12.1
+      "atk": 13,
+      "def": 10.3,
+      "spd": 11.9
     },
     "growthRange": {
       "min": {
@@ -393,10 +394,10 @@
       }
     },
     "skillPool": [
+      "splash",
       "tidalWave",
-      "bind",
       "waterAura",
-      "venomSpine"
+      "guardBreak"
     ],
     "captureBaseRate": 0.18,
     "rarity": "rare"
@@ -410,8 +411,8 @@
     },
     "baseStats": {
       "hp": 55,
-      "atk": 13.8,
-      "def": 11.5,
+      "atk": 13.9,
+      "def": 11.6,
       "spd": 11.6
     },
     "growthRange": {
@@ -429,10 +430,10 @@
       }
     },
     "skillPool": [
+      "splash",
       "tidalWave",
       "waterAura",
-      "lull",
-      "guardBreak",
+      "frenzy",
       "mend"
     ],
     "captureBaseRate": 0.08,
@@ -446,10 +447,10 @@
       "secondary": null
     },
     "baseStats": {
-      "hp": 37,
-      "atk": 12.1,
-      "def": 8.2,
-      "spd": 12.6
+      "hp": 36,
+      "atk": 11.9,
+      "def": 8.1,
+      "spd": 12.5
     },
     "growthRange": {
       "min": {
@@ -516,10 +517,10 @@
       "secondary": null
     },
     "baseStats": {
-      "hp": 48,
-      "atk": 13.2,
-      "def": 10,
-      "spd": 10.5
+      "hp": 47,
+      "atk": 12.8,
+      "def": 9.7,
+      "spd": 10.1
     },
     "growthRange": {
       "min": {
@@ -551,10 +552,10 @@
       "secondary": "earth"
     },
     "baseStats": {
-      "hp": 50,
-      "atk": 10.5,
-      "def": 13,
-      "spd": 7.2
+      "hp": 53,
+      "atk": 11,
+      "def": 13.7,
+      "spd": 7.6
     },
     "growthRange": {
       "min": {
@@ -572,7 +573,7 @@
     },
     "skillPool": [
       "scorch",
-      "ironWall",
+      "flare",
       "harden",
       "fireAura"
     ],
@@ -593,9 +594,9 @@
     },
     "baseStats": {
       "hp": 40,
-      "atk": 13.8,
-      "def": 9,
-      "spd": 14.9
+      "atk": 13.7,
+      "def": 8.9,
+      "spd": 14.8
     },
     "growthRange": {
       "min": {
@@ -612,10 +613,10 @@
       }
     },
     "skillPool": [
+      "scorch",
       "flare",
-      "gale",
       "fireAura",
-      "frenzy"
+      "guardBreak"
     ],
     "captureBaseRate": 0.18,
     "rarity": "rare"
@@ -628,8 +629,8 @@
       "secondary": "earth"
     },
     "baseStats": {
-      "hp": 55,
-      "atk": 14.9,
+      "hp": 54,
+      "atk": 14.8,
       "def": 11,
       "spd": 11
     },
@@ -648,11 +649,11 @@
       }
     },
     "skillPool": [
+      "scorch",
       "flare",
       "fireAura",
-      "frenzy",
-      "guardBreak",
-      "quake"
+      "frenzy3",
+      "mend"
     ],
     "captureBaseRate": 0.08,
     "rarity": "epic"
@@ -665,10 +666,10 @@
       "secondary": null
     },
     "baseStats": {
-      "hp": 34,
-      "atk": 10.5,
-      "def": 8,
-      "spd": 13.8
+      "hp": 36,
+      "atk": 10.8,
+      "def": 8.3,
+      "spd": 14.2
     },
     "growthRange": {
       "min": {
@@ -685,8 +686,8 @@
       }
     },
     "skillPool": [
+      "windSlash",
       "gale",
-      "strike",
       "feint"
     ],
     "captureBaseRate": 0.42,
@@ -700,10 +701,10 @@
       "secondary": "earth"
     },
     "baseStats": {
-      "hp": 37,
-      "atk": 10.1,
-      "def": 8.8,
-      "spd": 13.4
+      "hp": 38,
+      "atk": 10.3,
+      "def": 9,
+      "spd": 13.7
     },
     "growthRange": {
       "min": {
@@ -720,8 +721,8 @@
       }
     },
     "skillPool": [
+      "windSlash",
       "strike",
-      "feint",
       "lull"
     ],
     "captureBaseRate": 0.42,
@@ -735,10 +736,10 @@
       "secondary": null
     },
     "baseStats": {
-      "hp": 42,
-      "atk": 13.2,
-      "def": 9.2,
-      "spd": 13.8
+      "hp": 40,
+      "atk": 12.5,
+      "def": 8.7,
+      "spd": 13.1
     },
     "growthRange": {
       "min": {
@@ -755,10 +756,10 @@
       }
     },
     "skillPool": [
+      "windSlash",
       "gale",
       "frenzy",
-      "feint",
-      "taunt"
+      "feint"
     ],
     "captureBaseRate": 0.3,
     "rarity": "uncommon"
@@ -771,10 +772,10 @@
       "secondary": "water"
     },
     "baseStats": {
-      "hp": 44,
-      "atk": 11.6,
-      "def": 10,
-      "spd": 13.2
+      "hp": 43,
+      "atk": 11.3,
+      "def": 9.8,
+      "spd": 13
     },
     "growthRange": {
       "min": {
@@ -791,10 +792,10 @@
       }
     },
     "skillPool": [
+      "windSlash",
       "gale",
       "windAura",
-      "mend",
-      "feint"
+      "mend"
     ],
     "captureBaseRate": 0.3,
     "rarity": "uncommon",
@@ -812,10 +813,10 @@
       "secondary": "water"
     },
     "baseStats": {
-      "hp": 40,
-      "atk": 14.3,
-      "def": 8.8,
-      "spd": 15.4
+      "hp": 39,
+      "atk": 13.9,
+      "def": 8.6,
+      "spd": 15
     },
     "growthRange": {
       "min": {
@@ -832,10 +833,10 @@
       }
     },
     "skillPool": [
+      "windSlash",
       "gale",
       "windAura",
-      "guardBreak",
-      "feint"
+      "guardBreak"
     ],
     "captureBaseRate": 0.18,
     "rarity": "rare"
@@ -848,10 +849,10 @@
       "secondary": "fire"
     },
     "baseStats": {
-      "hp": 48,
-      "atk": 14.3,
-      "def": 10.5,
-      "spd": 15.4
+      "hp": 47,
+      "atk": 13.9,
+      "def": 10.2,
+      "spd": 14.9
     },
     "growthRange": {
       "min": {
@@ -868,10 +869,10 @@
       }
     },
     "skillPool": [
+      "windSlash",
       "gale",
       "windAura",
       "frenzy",
-      "guardBreak",
       "mend"
     ],
     "captureBaseRate": 0.08,
