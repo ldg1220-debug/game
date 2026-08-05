@@ -12,6 +12,7 @@ import {
   type PetSpecies,
   type Rarity,
 } from '../src/engine/types';
+import { TRAITS } from '../src/render/species';
 
 /**
  * 데이터 검증 테스트.
@@ -275,5 +276,50 @@ describe('검증기가 실제로 잡아내는가', () => {
 
   it('최상위가 배열이 아니면 실패한다', () => {
     expect(validateData({ ...raw, pets: { a: 1 } }).errors.some((e) => e.includes('배열'))).toBe(true);
+  });
+});
+
+/* ─────────────── 종별 실루엣 특징 ─────────────── */
+
+/**
+ * 특징표(src/render/species.ts)는 밸런스 데이터가 아니라 그리는 방법이라
+ * pets.json에 두지 않았다. 대신 누락을 여기서 막는다 — 새 종을 추가하고 특징을
+ * 안 적으면 조용히 기본 모양으로 나오고, 그건 처음에 골격을 렌더러에 숨겨뒀을
+ * 때와 똑같은 실수다.
+ */
+describe('종별 실루엣 특징', () => {
+  const pets = data.pets;
+
+  it('모든 종에 특징이 있다', () => {
+    const missing = pets.filter((p) => TRAITS[p.id] === undefined).map((p) => p.id);
+    expect(missing).toEqual([]);
+  });
+
+  it('특징표에 없는 종이 없다', () => {
+    const ids = new Set(pets.map((p) => p.id));
+    expect(Object.keys(TRAITS).filter((id) => !ids.has(id))).toEqual([]);
+  });
+
+  it('특징의 골격이 데이터의 골격과 같다', () => {
+    // 두 곳에 적히는 값이라 어긋날 수 있다. 어긋나면 데이터가 맞고 특징이 틀린 것이다.
+    const wrong = pets
+      .filter((p) => TRAITS[p.id] && TRAITS[p.id]!.form !== p.form)
+      .map((p) => `${p.id}: 데이터 ${p.form} vs 특징 ${TRAITS[p.id]!.form}`);
+    expect(wrong).toEqual([]);
+  });
+
+  it('같은 골격을 쓰는 종끼리 특징 조합이 겹치지 않는다', () => {
+    // 겹치면 색만 다른 같은 그림이 된다. 이 게임에서 그건 종이 없는 것과 같다.
+    const seen = new Map<string, string>();
+    const dupes: string[] = [];
+    for (const p of pets) {
+      const tr = TRAITS[p.id];
+      if (!tr) continue;
+      const key = [tr.form, tr.ear, tr.tail, tr.snout, tr.build, tr.crest, tr.horn, tr.claws, tr.wing, tr.beak, tr.shell, tr.plate].join('/');
+      const other = seen.get(key);
+      if (other) dupes.push(`${other} ↔ ${p.id}`);
+      else seen.set(key, p.id);
+    }
+    expect(dupes).toEqual([]);
   });
 });

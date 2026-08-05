@@ -69,19 +69,22 @@ const SPECIES = [
 /**
  * 외형 골격.
  *
- * 이름이 곧 골격이다 — 등딱지 달린 것은 shell, 뿔 달린 네발은 horned, 목이 긴
- * 거수는 saurian. 밸런스에는 들어가지 않지만 종마다 반드시 하나 있어야 하므로
- * 표를 따로 두고 아래에서 누락을 확인한다.
+ * 이름이 곧 골격이다 — 등딱지 달린 것은 shell, 네발 짐승은 beast, 목이 긴 거수는
+ * saurian. 밸런스에는 들어가지 않지만 종마다 반드시 하나 있어야 하므로 표를 따로
+ * 두고 아래에서 누락을 확인한다.
+ *
+ * 뿔·귀·꼬리 같은 세부는 여기 없다. 그건 골격이 아니라 부속이고,
+ * src/render/species.ts 의 특징표가 맡는다.
  */
 const FORM = {
-  bouldershell: 'shell',   dustmole: 'beast',     cragox: 'horned',
+  bouldershell: 'shell',   dustmole: 'beast',     cragox: 'beast',
   vinecarapace: 'shell',   granitewarden: 'golem', terrasovereign: 'saurian',
   dewtail: 'beast',        brookotter: 'beast',   abyssray: 'ray',
   frostscale: 'serpent',   currentwyrm: 'serpent', abysslord: 'saurian',
   emberfox: 'beast',       ashnewt: 'serpent',    blazeboar: 'beast',
   magmasnail: 'shell',     plumewing: 'bird',     pyrarch: 'saurian',
   breezefinch: 'bird',     meadowhare: 'beast',   gustwolf: 'beast',
-  whirlstag: 'horned',     stormfalcon: 'bird',   skysuzerain: 'bird',
+  whirlstag: 'beast',      stormfalcon: 'bird',   skysuzerain: 'bird',
 };
 
 const BASE = { hp: 42, atk: 11, def: 10, spd: 11 };

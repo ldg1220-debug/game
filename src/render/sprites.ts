@@ -16,6 +16,7 @@
 import type { ElementPair, PetForm } from '../engine/types';
 import { facesCamera, type ScreenDir } from './iso';
 import { hashId, hsl, speciesPalette, type HumanPalette, type Palette } from './palette';
+import { BUILD_SCALE, traitsOf, type Traits } from './species';
 
 const TAU = Math.PI * 2;
 
@@ -203,7 +204,7 @@ export interface Jitter {
   head: number;
 }
 
-type FormDrawer = (g: CanvasRenderingContext2D, u: number, p: Palette, ph: number, t: number, j: Jitter) => void;
+type FormDrawer = (g: CanvasRenderingContext2D, u: number, p: Palette, ph: number, t: number, j: Jitter, tr: Traits) => void;
 
 /** 다리 하나. 걸음에 따라 앞뒤로 흔든다. */
 function leg(g: CanvasRenderingContext2D, x: number, top: number, w: number, swing: number, col: string): void {
@@ -217,120 +218,224 @@ function leg(g: CanvasRenderingContext2D, x: number, top: number, w: number, swi
 }
 
 /**
- * 네발 짐승. 여우·늑대·멧돼지·수달·토끼·두더지, 그리고 뿔을 얹으면 소와 사슴.
+ * 네발 짐승. 일곱 종이 이 골격을 쓴다 — 두더지·여우·수달·물방울꼬리·멧돼지·
+ * 늑대·토끼, 그리고 뿔을 얹으면 소와 사슴.
  *
- * 골격을 하나로 두고 옵션으로 가르는 이유는, 종마다 함수를 따로 두면 같은
- * 수정(예: 다리 흔들기 위상)을 일곱 군데에 해야 하고 한 군데를 반드시 빠뜨리기
- * 때문이다.
+ * 처음엔 골격 옵션 셋(bulk/horns/ear)으로 갈랐는데, 스프라이트 시트를 뽑아 보니
+ * 색만 다른 여우 일곱 마리였다. 종을 모으는 게임에서 종이 구별되지 않으면 모을
+ * 이유가 없다. 그래서 지금은 species.ts의 특징표를 읽어 **귀·꼬리·주둥이·체격·
+ * 갈기·발톱**을 각각 따로 그린다. 조합이 곧 실루엣이다.
+ *
+ * 함수를 종마다 따로 두지 않는 이유는 그대로다 — 같은 수정(다리 흔들기 위상
+ * 같은 것)을 일곱 군데에 해야 하고, 한 군데를 반드시 빠뜨린다.
  */
-function beast(opt: { bulk: number; horns: 'ox' | 'antler' | null; ear: 'point' | 'long' | 'round'; tail: 'bush' | 'tuft' }): FormDrawer {
-  return (g, u, p, ph, t, j) => {
-    const b = opt.bulk * (1 + j.long * 0.12);
-    const sw = Math.sin(ph * TAU) * u * 0.16;
-    const bob = Math.sin(t / 460) * u * 0.015;
-    // 어깨 높이 = 다리 길이. 늑대는 높고 두더지는 낮다.
-    const bodyY = -u * (0.56 + j.tall * 0.07) + bob;
-    const hr = 1 + j.head * 0.15;
+const beast: FormDrawer = (g, u, p, ph, t, j, tr) => {
+  const scale = BUILD_SCALE[tr.build];
+  const b = scale.bulk * (1 + j.long * 0.09);
+  const sw = Math.sin(ph * TAU) * u * 0.16;
+  const bob = Math.sin(t / 460) * u * 0.015;
+  // 어깨 높이 = 다리 길이. 늑대는 높고 두더지는 땅에 붙어 있다.
+  const bodyY = -u * (0.54 + j.tall * 0.05) * scale.legs + bob;
+  const hr = (1 + j.head * 0.12) * (tr.build === 'massive' ? 1.1 : 1);
+  const legW = u * 0.11 * b;
 
-    // 뒷다리를 먼저 — 몸통에 가려져야 깊이가 생긴다
-    leg(g, -u * 0.34, bodyY + u * 0.16, u * 0.11 * b, -sw, p.dark);
-    leg(g, u * 0.3, bodyY + u * 0.16, u * 0.11 * b, sw, p.dark);
+  /* ── 뒷다리 (몸통에 가려져야 깊이가 생긴다) ── */
+  leg(g, -u * 0.34 * b, bodyY + u * 0.16, legW, -sw, p.dark);
+  leg(g, u * 0.3 * b, bodyY + u * 0.16, legW, sw, p.dark);
 
-    g.fillStyle = p.body;
-    ell(g, 0, bodyY, u * 0.58 * b, u * 0.31 * b);
+  /* ── 꼬리 ── */
+  const tailBase = -u * 0.5 * b;
+  if (tr.tail === 'bush') {
+    // 여우·늑대 — 몸통만큼 굵고 위로 말린다
+    taper(g, (s) => [tailBase - u * s * 0.44 * b, bodyY - u * s * s * 0.5], u * 0.1, u * 0.17, p.light, 11);
+  } else if (tr.tail === 'flat') {
+    // 수달 — 납작하고 두껍게 뒤로 뻗는다
+    g.save();
+    g.translate(tailBase, bodyY + u * 0.1);
+    g.rotate(0.18);
     g.fillStyle = p.dark;
-    ell(g, -u * 0.4 * b, bodyY - u * 0.02, u * 0.28 * b, u * 0.28 * b);
+    ell(g, -u * 0.32 * b, 0, u * 0.36 * b, u * 0.1);
+    g.restore();
+  } else if (tr.tail === 'puff') {
+    // 토끼·물방울꼬리 — 동그란 뭉치
     g.fillStyle = p.belly;
-    ell(g, 0, bodyY + u * 0.16 * b, u * 0.4 * b, u * 0.12 * b);
+    ell(g, tailBase - u * 0.06, bodyY - u * 0.06, u * 0.14, u * 0.14);
+  } else if (tr.tail === 'long') {
+    taper(g, (s) => [tailBase - u * s * 0.7 * b, bodyY - u * s * 0.1], u * 0.06, u * 0.02, p.dark, 12);
+  } else if (tr.tail === 'tuft') {
+    taper(g, (s) => [tailBase - u * s * 0.28 * b, bodyY - u * s * 0.34], u * 0.06, u * 0.02, p.dark, 8);
+    g.fillStyle = p.accent;
+    ell(g, tailBase - u * 0.28 * b, bodyY - u * 0.34, u * 0.07, u * 0.07);
+  }
+  // stub은 아무것도 안 그린다 — 꼬리가 없는 게 두더지·멧돼지의 특징이다
 
-    // 꼬리
-    if (opt.tail === 'bush') {
-      taper(g, (s) => [-u * (0.5 + s * 0.42) * b, bodyY - u * s * s * 0.5], u * 0.1, u * 0.16, p.light, 10);
-    } else {
-      taper(g, (s) => [-u * (0.5 + s * 0.3) * b, bodyY - u * s * 0.34], u * 0.07, u * 0.02, p.dark, 8);
-    }
+  /* ── 몸통 ── */
+  g.fillStyle = p.body;
+  ell(g, 0, bodyY, u * 0.58 * b, u * 0.31 * b);
+  g.fillStyle = p.dark;
+  ell(g, -u * 0.4 * b, bodyY - u * 0.02, u * 0.28 * b, u * 0.28 * b);
+  g.fillStyle = p.belly;
+  ell(g, 0, bodyY + u * 0.16 * b, u * 0.4 * b, u * 0.12 * b);
 
-    // 앞다리
-    leg(g, -u * 0.14, bodyY + u * 0.16, u * 0.11 * b, sw, p.body);
-    leg(g, u * 0.44, bodyY + u * 0.16, u * 0.11 * b, -sw, p.body);
-
-    g.fillStyle = p.body;
-    ell(g, u * 0.42 * b, bodyY - u * 0.04, u * 0.26 * b, u * 0.26 * b);
-
-    // 목과 머리
-    const hx = u * 0.72 * b;
-    const hy = bodyY - u * 0.24;
-    taper(g, (s) => [u * (0.42 + s * 0.3) * b, bodyY - u * s * 0.2], u * 0.17 * b, u * 0.15 * b, p.body, 6);
-    g.fillStyle = p.body;
-    ell(g, hx, hy, u * 0.22 * hr, u * 0.2 * hr);
-    g.fillStyle = p.belly;
-    ell(g, hx + u * 0.19, hy + u * 0.05, u * 0.14, u * 0.1);
+  /* ── 등의 갈기·가시 ── */
+  if (tr.crest === 'mane') {
+    // 멧돼지·늑대. 등 선을 따라 삐죽삐죽 세운다.
     g.fillStyle = p.dark;
-    ell(g, hx + u * 0.31, hy + u * 0.04, u * 0.045, u * 0.04);
-
-    // 귀
-    g.fillStyle = p.dark;
-    if (opt.ear === 'long') {
-      for (const s of [-1, 1]) {
-        const ex = hx - u * 0.06 + s * u * 0.07;
-        ell(g, ex, hy - u * 0.34, u * 0.06, u * 0.28, s * 0.22);
-        g.fillStyle = p.belly;
-        ell(g, ex + s * u * 0.01, hy - u * 0.36, u * 0.03, u * 0.19, s * 0.22);
-        g.fillStyle = p.dark;
-      }
-    } else if (opt.ear === 'round') {
-      for (const s of [-1, 1]) ell(g, hx - u * 0.1 + s * u * 0.06, hy - u * 0.17, u * 0.08, u * 0.07);
-    } else {
+    for (let i = 0; i < 6; i++) {
+      const s = i / 5;
+      const x = -u * (0.34 - s * 0.66) * b;
+      const h = u * (0.1 + Math.sin(s * Math.PI) * 0.12);
       tri(g, [
-        [hx - u * 0.14, hy - u * 0.12],
-        [hx - u * 0.06, hy - u * 0.36],
-        [hx + u * 0.06, hy - u * 0.13],
-      ]);
-      tri(g, [
-        [hx + u * 0.04, hy - u * 0.13],
-        [hx + u * 0.14, hy - u * 0.32],
-        [hx + u * 0.2, hy - u * 0.08],
+        [x - u * 0.06, bodyY - u * 0.26 * b],
+        [x + u * 0.02, bodyY - u * 0.26 * b - h],
+        [x + u * 0.07, bodyY - u * 0.25 * b],
       ]);
     }
+  } else if (tr.crest === 'spine') {
+    g.fillStyle = p.accent;
+    for (let i = 0; i < 5; i++) {
+      const x = -u * (0.3 - (i / 4) * 0.6) * b;
+      tri(g, [
+        [x - u * 0.05, bodyY - u * 0.27 * b],
+        [x, bodyY - u * 0.27 * b - u * 0.14],
+        [x + u * 0.05, bodyY - u * 0.27 * b],
+      ]);
+    }
+  }
 
-    // 뿔
-    if (opt.horns === 'ox') {
-      g.strokeStyle = p.accent;
-      g.lineWidth = u * 0.07;
-      g.lineCap = 'round';
-      for (const s of [-1, 1]) {
-        g.beginPath();
-        g.moveTo(hx - u * 0.04, hy - u * 0.14);
-        g.quadraticCurveTo(hx + s * u * 0.06 - u * 0.16, hy - u * 0.38, hx + u * 0.16 * s, hy - u * 0.42);
-        g.stroke();
-      }
-    } else if (opt.horns === 'antler') {
-      g.strokeStyle = p.accent;
-      g.lineWidth = u * 0.045;
-      g.lineCap = 'round';
-      for (const s of [-1, 1]) {
-        const bx = hx - u * 0.06 + s * u * 0.07;
-        g.beginPath();
-        g.moveTo(bx, hy - u * 0.16);
-        g.lineTo(bx - u * 0.06, hy - u * 0.52);
-        g.moveTo(bx - u * 0.04, hy - u * 0.32);
-        g.lineTo(bx + u * 0.14, hy - u * 0.42);
-        g.moveTo(bx - u * 0.05, hy - u * 0.44);
-        g.lineTo(bx - u * 0.2, hy - u * 0.5);
-        g.stroke();
+  /* ── 앞다리 ── */
+  leg(g, -u * 0.14 * b, bodyY + u * 0.16, legW, sw, p.body);
+  leg(g, u * 0.44 * b, bodyY + u * 0.16, legW, -sw, p.body);
+  if (tr.claws) {
+    // 두더지 — 앞발이 삽이다. 이게 있으면 다른 짐승과 절대 안 헷갈린다.
+    g.fillStyle = p.accent;
+    for (const x of [-u * 0.14 * b + sw, u * 0.44 * b - sw]) {
+      for (let i = -1; i <= 1; i++) {
+        tri(g, [
+          [x + i * u * 0.05, -u * 0.02],
+          [x + i * u * 0.05 + u * 0.13, u * 0.02],
+          [x + i * u * 0.05, u * 0.05],
+        ]);
       }
     }
+  }
 
-    // 눈
-    g.fillStyle = '#14121a';
-    ell(g, hx + u * 0.11, hy - u * 0.04, u * 0.036, u * 0.045);
-    g.fillStyle = 'rgba(255,255,255,0.85)';
-    ell(g, hx + u * 0.125, hy - u * 0.06, u * 0.014, u * 0.016);
-  };
-}
+  g.fillStyle = p.body;
+  ell(g, u * 0.42 * b, bodyY - u * 0.04, u * 0.26 * b, u * 0.26 * b);
+
+  /* ── 목과 머리 ── */
+  const hx = u * 0.72 * b;
+  const hy = bodyY - u * 0.24 * (tr.build === 'stocky' ? 0.6 : 1);
+  taper(g, (s) => [u * (0.42 + s * 0.3) * b, bodyY - u * s * 0.2 * (tr.build === 'stocky' ? 0.6 : 1)], u * 0.17 * b, u * 0.15 * b, p.body, 6);
+  g.fillStyle = p.body;
+  ell(g, hx, hy, u * 0.22 * hr, u * 0.2 * hr);
+
+  /* ── 주둥이 ── */
+  if (tr.snout === 'shovel') {
+    // 두더지 — 뭉툭하고 넓적한 코
+    g.fillStyle = p.belly;
+    ell(g, hx + u * 0.2, hy + u * 0.04, u * 0.15, u * 0.12);
+    g.fillStyle = p.accent;
+    ell(g, hx + u * 0.32, hy + u * 0.04, u * 0.06, u * 0.07);
+  } else if (tr.snout === 'long') {
+    g.fillStyle = p.belly;
+    ell(g, hx + u * 0.24, hy + u * 0.06, u * 0.19, u * 0.09);
+    g.fillStyle = p.dark;
+    ell(g, hx + u * 0.4, hy + u * 0.04, u * 0.045, u * 0.04);
+  } else if (tr.snout === 'tusk') {
+    // 멧돼지 — 위로 굽은 엄니 한 쌍
+    g.fillStyle = p.belly;
+    ell(g, hx + u * 0.19, hy + u * 0.07, u * 0.16, u * 0.12);
+    g.fillStyle = p.dark;
+    ell(g, hx + u * 0.32, hy + u * 0.05, u * 0.05, u * 0.045);
+    g.strokeStyle = '#efe6cf';
+    g.lineWidth = u * 0.05;
+    g.lineCap = 'round';
+    for (const dy of [0, u * 0.07]) {
+      g.beginPath();
+      g.moveTo(hx + u * 0.18, hy + u * 0.14 + dy);
+      g.quadraticCurveTo(hx + u * 0.34, hy + u * 0.14 + dy, hx + u * 0.3, hy - u * 0.04 + dy);
+      g.stroke();
+    }
+  } else {
+    g.fillStyle = p.belly;
+    ell(g, hx + u * 0.18, hy + u * 0.05, u * 0.13, u * 0.1);
+    g.fillStyle = p.dark;
+    ell(g, hx + u * 0.28, hy + u * 0.04, u * 0.045, u * 0.04);
+  }
+
+  /* ── 귀 ── */
+  g.fillStyle = p.dark;
+  if (tr.ear === 'long') {
+    for (const s of [-1, 1]) {
+      const ex = hx - u * 0.06 + s * u * 0.07;
+      ell(g, ex, hy - u * 0.34, u * 0.06, u * 0.28, s * 0.22);
+      g.fillStyle = p.belly;
+      ell(g, ex + s * u * 0.01, hy - u * 0.36, u * 0.03, u * 0.19, s * 0.22);
+      g.fillStyle = p.dark;
+    }
+  } else if (tr.ear === 'round') {
+    for (const s of [-1, 1]) ell(g, hx - u * 0.1 + s * u * 0.06, hy - u * 0.17, u * 0.085, u * 0.075);
+  } else if (tr.ear === 'tiny') {
+    for (const s of [-1, 1]) ell(g, hx - u * 0.08 + s * u * 0.05, hy - u * 0.15, u * 0.04, u * 0.035);
+  } else {
+    // point — 여우·늑대. 크고 뾰족하게.
+    tri(g, [
+      [hx - u * 0.15, hy - u * 0.12],
+      [hx - u * 0.07, hy - u * 0.4],
+      [hx + u * 0.06, hy - u * 0.13],
+    ]);
+    tri(g, [
+      [hx + u * 0.04, hy - u * 0.13],
+      [hx + u * 0.15, hy - u * 0.36],
+      [hx + u * 0.21, hy - u * 0.08],
+    ]);
+  }
+
+  /* ── 뿔 ── */
+  if (tr.horn === 'ox') {
+    g.strokeStyle = p.accent;
+    g.lineWidth = u * 0.07;
+    g.lineCap = 'round';
+    for (const s of [-1, 1]) {
+      g.beginPath();
+      g.moveTo(hx - u * 0.04, hy - u * 0.14);
+      g.quadraticCurveTo(hx + s * u * 0.06 - u * 0.16, hy - u * 0.38, hx + u * 0.16 * s, hy - u * 0.42);
+      g.stroke();
+    }
+  } else if (tr.horn === 'antler') {
+    g.strokeStyle = p.accent;
+    g.lineWidth = u * 0.045;
+    g.lineCap = 'round';
+    for (const s of [-1, 1]) {
+      const bx = hx - u * 0.06 + s * u * 0.07;
+      g.beginPath();
+      g.moveTo(bx, hy - u * 0.16);
+      g.lineTo(bx - u * 0.06, hy - u * 0.52);
+      g.moveTo(bx - u * 0.04, hy - u * 0.32);
+      g.lineTo(bx + u * 0.14, hy - u * 0.42);
+      g.moveTo(bx - u * 0.05, hy - u * 0.44);
+      g.lineTo(bx - u * 0.2, hy - u * 0.5);
+      g.stroke();
+    }
+  } else if (tr.horn === 'single') {
+    g.fillStyle = p.accent;
+    tri(g, [
+      [hx - u * 0.02, hy - u * 0.16],
+      [hx + u * 0.14, hy - u * 0.5],
+      [hx + u * 0.1, hy - u * 0.13],
+    ]);
+  }
+
+  /* ── 눈 ── */
+  g.fillStyle = '#14121a';
+  ell(g, hx + u * 0.11, hy - u * 0.04, u * 0.036, u * 0.045);
+  g.fillStyle = 'rgba(255,255,255,0.85)';
+  ell(g, hx + u * 0.125, hy - u * 0.06, u * 0.014, u * 0.016);
+};
 
 /** 등딱지. 거북과 달팽이. */
-const shell: FormDrawer = (g, u, p, ph, t) => {
+const shell: FormDrawer = (g, u, p, ph, t, _j, tr) => {
   const sw = Math.sin(ph * TAU) * u * 0.07;
   const bob = Math.sin(t / 620) * u * 0.012;
   const bodyY = -u * 0.3 + bob;
@@ -349,25 +454,68 @@ const shell: FormDrawer = (g, u, p, ph, t) => {
   g.fillStyle = p.dark;
   ell(g, hx + u * 0.15, hy + u * 0.03, u * 0.05, u * 0.04);
 
+  // 꼬리 — 넝쿨거북만 있다
+  if (tr.tail === 'long') {
+    taper(g, (s) => [-u * (0.5 + s * 0.45), bodyY + u * 0.06 - u * s * 0.1], u * 0.06, u * 0.015, p.dark, 10);
+  }
+
   // 등딱지 — 이 골격의 얼굴이다. 크고 확실하게.
+  //
+  // 셋이 같은 골격이라 껍질 모양으로 가른다. 거북은 낮고 넓은 돔, 달팽이는
+  // 높고 둥근 소용돌이, 넝쿨거북은 가시 돋친 돔. 껍질이 이 골격에서 가장 큰
+  // 면적이라 여기만 달라도 종이 갈린다.
+  const spiral = tr.shell === 'spiral';
+  const domeW = spiral ? 0.46 : 0.56;
+  const domeH = spiral ? 0.56 : 0.44;
+
+  if (tr.shell === 'spiked') {
+    // 가시를 껍질보다 먼저 — 테두리 밖으로 삐져나오게
+    g.fillStyle = p.dark;
+    for (let i = 0; i < 7; i++) {
+      const a = Math.PI + (i / 6) * Math.PI;
+      const cx = -u * 0.02 + Math.cos(a) * u * domeW;
+      const cy = bodyY - u * 0.04 + Math.sin(a) * u * domeH;
+      tri(g, [
+        [cx - u * 0.05, cy],
+        [cx + Math.cos(a) * u * 0.16, cy + Math.sin(a) * u * 0.16],
+        [cx + u * 0.05, cy],
+      ]);
+    }
+  }
+
   g.fillStyle = p.accent;
   g.beginPath();
-  g.ellipse(-u * 0.02, bodyY - u * 0.04, u * 0.56, u * 0.44, 0, Math.PI, TAU);
+  g.ellipse(-u * 0.02, bodyY - u * 0.04, u * domeW, u * domeH, 0, Math.PI, TAU);
   g.closePath();
   g.fill();
   g.fillStyle = 'rgba(255,255,255,0.18)';
   g.beginPath();
-  g.ellipse(-u * 0.16, bodyY - u * 0.16, u * 0.2, u * 0.14, -0.5, Math.PI, TAU);
+  g.ellipse(-u * 0.16, bodyY - u * 0.18, u * 0.2, u * 0.14, -0.5, Math.PI, TAU);
   g.closePath();
   g.fill();
 
-  // 판 무늬. 셋이면 등딱지로도 소용돌이로도 읽힌다.
   g.strokeStyle = p.dark;
   g.lineWidth = Math.max(1, u * 0.03);
-  for (const r of [0.2, 0.36, 0.5]) {
+  if (spiral) {
+    // 달팽이 — 한 점을 향해 감기는 나선. 동심원과 달리 중심이 한쪽에 치우친다.
     g.beginPath();
-    g.ellipse(-u * 0.02, bodyY - u * 0.04, u * r, u * r * 0.78, 0, Math.PI, TAU);
+    for (let i = 0; i <= 90; i++) {
+      const k = i / 90;
+      const a = Math.PI + k * Math.PI * 3.2;
+      const r = u * domeW * (1 - k * 0.86);
+      const x = -u * 0.02 + u * 0.1 * k + Math.cos(a) * r;
+      const y = bodyY - u * 0.04 - u * 0.06 * k + Math.sin(a) * r * (domeH / domeW);
+      if (y > bodyY - u * 0.04) continue;
+      if (i === 0) g.moveTo(x, y);
+      else g.lineTo(x, y);
+    }
     g.stroke();
+  } else {
+    for (const r of [0.2, 0.36, 0.5]) {
+      g.beginPath();
+      g.ellipse(-u * 0.02, bodyY - u * 0.04, u * r, u * r * 0.78, 0, Math.PI, TAU);
+      g.stroke();
+    }
   }
 
   g.fillStyle = '#14121a';
@@ -377,7 +525,7 @@ const shell: FormDrawer = (g, u, p, ph, t) => {
 };
 
 /** 목이 긴 거수. 원작 화면의 그 공룡들이다. */
-const saurian: FormDrawer = (g, u, p, ph, t) => {
+const saurian: FormDrawer = (g, u, p, ph, t, _j, tr) => {
   const sw = Math.sin(ph * TAU) * u * 0.13;
   const bob = Math.sin(t / 520) * u * 0.018;
   const bodyY = -u * 0.66 + bob;
@@ -396,35 +544,75 @@ const saurian: FormDrawer = (g, u, p, ph, t) => {
   leg(g, -u * 0.1, bodyY + u * 0.2, u * 0.16, sw, p.body);
   leg(g, u * 0.44, bodyY + u * 0.2, u * 0.16, -sw, p.body);
 
-  // 목
-  const hx = u * 0.92;
-  const hy = bodyY - u * 0.86;
+  // 목 — 길이가 종을 가른다. 심연의군주는 길고 화산의패자는 짧고 굵다.
+  const neck = tr.neck ?? 1;
+  const hx = u * (0.44 + 0.48 * neck);
+  const hy = bodyY - u * (0.16 + 0.72 * neck);
   taper(
     g,
-    (s) => [u * (0.44 + s * 0.48), bodyY - u * (0.16 + s * 0.72) + u * s * (1 - s) * 0.18],
+    (s) => [u * (0.44 + s * 0.48 * neck), bodyY - u * (0.16 + s * 0.72 * neck) + u * s * (1 - s) * 0.18],
     u * 0.19,
     u * 0.11,
     p.body,
     16,
   );
 
-  // 등판 — 스테고사우루스 쪽 실루엣을 빌린다
-  g.fillStyle = p.accent;
-  for (let i = 0; i < 5; i++) {
-    const s = i / 4;
-    const x = -u * 0.5 + s * u * 0.9;
-    const h = u * (0.16 + Math.sin(s * Math.PI) * 0.16);
-    tri(g, [
-      [x - u * 0.09, bodyY - u * 0.3],
-      [x, bodyY - u * 0.3 - h],
-      [x + u * 0.09, bodyY - u * 0.3],
-    ]);
+  // 등판
+  if (tr.plate === 'sail') {
+    // 이어진 돛. 가시와 달리 하나의 곡선이라 실루엣이 확 다르다.
+    g.fillStyle = p.accent;
+    g.beginPath();
+    g.moveTo(-u * 0.56, bodyY - u * 0.3);
+    for (let i = 0; i <= 12; i++) {
+      const s = i / 12;
+      const x = -u * 0.56 + s * u * 1.02;
+      g.lineTo(x, bodyY - u * 0.3 - u * Math.sin(s * Math.PI) * 0.42);
+    }
+    g.lineTo(u * 0.46, bodyY - u * 0.3);
+    g.closePath();
+    g.fill();
+    g.strokeStyle = p.dark;
+    g.lineWidth = Math.max(1, u * 0.02);
+    for (let i = 1; i < 6; i++) {
+      const s = i / 6;
+      const x = -u * 0.56 + s * u * 1.02;
+      g.beginPath();
+      g.moveTo(x, bodyY - u * 0.3);
+      g.lineTo(x, bodyY - u * 0.3 - u * Math.sin(s * Math.PI) * 0.38);
+      g.stroke();
+    }
+  } else if (tr.plate !== 'none') {
+    // 스테고사우루스 쪽 실루엣
+    g.fillStyle = p.accent;
+    for (let i = 0; i < 5; i++) {
+      const s = i / 4;
+      const x = -u * 0.5 + s * u * 0.9;
+      const h = u * (0.16 + Math.sin(s * Math.PI) * 0.16);
+      tri(g, [
+        [x - u * 0.09, bodyY - u * 0.3],
+        [x, bodyY - u * 0.3 - h],
+        [x + u * 0.09, bodyY - u * 0.3],
+      ]);
+    }
   }
 
   g.fillStyle = p.body;
   ell(g, hx, hy, u * 0.19, u * 0.14, -0.25);
   g.fillStyle = p.belly;
   ell(g, hx + u * 0.15, hy + u * 0.04, u * 0.1, u * 0.07);
+
+  if (tr.horn === 'ox') {
+    g.strokeStyle = p.accent;
+    g.lineWidth = u * 0.055;
+    g.lineCap = 'round';
+    for (const s of [-1, 1]) {
+      g.beginPath();
+      g.moveTo(hx - u * 0.04, hy - u * 0.1);
+      g.quadraticCurveTo(hx - u * 0.2, hy - u * 0.3, hx + u * 0.12 * s, hy - u * 0.34);
+      g.stroke();
+    }
+  }
+
   g.fillStyle = '#14121a';
   ell(g, hx + u * 0.06, hy - u * 0.04, u * 0.032, u * 0.04);
   g.fillStyle = 'rgba(255,255,255,0.85)';
@@ -432,12 +620,27 @@ const saurian: FormDrawer = (g, u, p, ph, t) => {
 };
 
 /** 뱀·도롱뇽·이무기. 몸을 S자로 흘린다. */
-const serpent: FormDrawer = (g, u, p, ph, t) => {
+const serpent: FormDrawer = (g, u, p, ph, t, _j, tr) => {
   const wave = t / 360 + ph * TAU;
+  // 도롱뇽은 뱀이 아니다 — 짧고 굵고, 땅에 붙어 다리로 긴다. 같은 골격을 쓰되
+  // 길이·굵기·다리 유무로 이무기와 갈라놓는다.
+  const newt = tr.build === 'stocky';
+  const len = newt ? 1.25 : 1.8;
+  const fat = newt ? 1.35 : 1;
+  const rise = newt ? 0.1 : 0.34;
   const path = (s: number): [number, number] => [
-    -u * 0.95 + s * u * 1.8,
-    -u * 0.3 - Math.sin(s * Math.PI * 1.8 + wave) * u * 0.24 - s * u * 0.34,
+    -u * (len / 2 + 0.05) + s * u * len,
+    -u * 0.3 - Math.sin(s * Math.PI * 1.8 + wave) * u * (newt ? 0.1 : 0.24) - s * u * rise,
   ];
+
+  if (newt) {
+    // 짧은 네 다리
+    const sw = Math.sin(ph * TAU) * u * 0.08;
+    for (const [sx, dir] of [[-0.42, -1], [0.3, 1]] as const) {
+      const [lx, ly] = path((sx + 0.7) / 1.4);
+      leg(g, lx, ly + u * 0.06, u * 0.08, sw * dir, p.dark);
+    }
+  }
 
   // 몸통을 원 사슬로 잇는다. 곡선을 따라 굵기를 바꾸기에 가장 단순한 방법이고,
   // 마디가 겹쳐 있어 이음매가 보이지 않는다.
@@ -445,14 +648,23 @@ const serpent: FormDrawer = (g, u, p, ph, t) => {
   for (let i = 0; i <= steps; i++) {
     const s = i / steps;
     const [x, y] = path(s);
-    const r = u * (0.05 + Math.sin(Math.min(1, s * 1.15) * Math.PI) * 0.15);
+    const r = u * (0.05 + Math.sin(Math.min(1, s * 1.15) * Math.PI) * 0.15) * fat;
     g.fillStyle = p.body;
     g.beginPath();
     g.arc(x, y, r, 0, TAU);
     g.fill();
     if (i % 3 === 0 && s > 0.15) {
       g.fillStyle = p.accent;
-      ell(g, x, y - r * 0.45, r * 0.36, r * 0.2);
+      if (tr.crest === 'spine') {
+        // 등지느러미 — 서리비늘·잿빛도롱뇽
+        tri(g, [
+          [x - r * 0.4, y - r * 0.7],
+          [x, y - r * 1.7],
+          [x + r * 0.4, y - r * 0.7],
+        ]);
+      } else {
+        ell(g, x, y - r * 0.45, r * 0.36, r * 0.2);
+      }
     }
   }
 
@@ -469,6 +681,16 @@ const serpent: FormDrawer = (g, u, p, ph, t) => {
       [hx - u * 0.02, hy + s * u * 0.04],
       [hx - u * 0.24, hy + s * u * 0.2],
       [hx - u * 0.16, hy + s * u * 0.02],
+    ]);
+  }
+
+  if (tr.horn === 'single') {
+    // 해류이무기 — 이마에 뿔 하나
+    g.fillStyle = p.accent;
+    tri(g, [
+      [hx - u * 0.02, hy - u * 0.08],
+      [hx + u * 0.16, hy - u * 0.4],
+      [hx + u * 0.1, hy - u * 0.05],
     ]);
   }
 
@@ -537,7 +759,7 @@ const ray: FormDrawer = (g, u, p, ph, t) => {
 };
 
 /** 새. 참새·매·불꽃깃새. */
-const bird: FormDrawer = (g, u, p, ph, t, j) => {
+const bird: FormDrawer = (g, u, p, ph, t, j, tr) => {
   const flap = Math.sin(t / 220 + ph * TAU);
   const bob = Math.sin(t / 400) * u * 0.02;
   const bodyY = -u * (0.56 + j.tall * 0.08) + bob;
@@ -555,12 +777,13 @@ const bird: FormDrawer = (g, u, p, ph, t, j) => {
     g.stroke();
   }
 
-  // 꽁지
+  // 꽁지 — 길면 흘러내리고 짧으면 부챗살
   g.fillStyle = p.dark;
+  const tailLen = tr.tail === 'long' ? 0.92 : 0.54;
   for (const a of [-0.3, 0, 0.3]) {
     tri(g, [
       [-u * 0.3, bodyY - u * 0.02],
-      [-u * 0.92, bodyY - u * 0.2 + a * u * 0.5],
+      [-u * tailLen, bodyY - u * 0.2 + a * u * (tr.tail === 'long' ? 0.5 : 0.34)],
       [-u * 0.34, bodyY + u * 0.12],
     ]);
   }
@@ -570,14 +793,32 @@ const bird: FormDrawer = (g, u, p, ph, t, j) => {
   g.fillStyle = p.belly;
   ell(g, u * 0.08, bodyY + u * 0.12, u * 0.24, u * 0.17);
 
-  // 날개 — 살짝 들썩이게 한다
+  // 날개 — 펼친 새와 접은 새는 실루엣이 완전히 다르다
   g.save();
   g.translate(-u * 0.04, bodyY - u * 0.04);
-  g.rotate(-0.25 + flap * 0.16);
-  g.fillStyle = p.dark;
-  ell(g, -u * 0.06, 0, u * 0.36, u * 0.17);
-  g.fillStyle = p.accent;
-  ell(g, -u * 0.16, u * 0.02, u * 0.18, u * 0.08);
+  if (tr.wing === 'spread') {
+    g.rotate(-0.62 + flap * 0.22);
+    g.fillStyle = p.dark;
+    ell(g, -u * 0.14, 0, u * 0.62 * fat, u * 0.16);
+    g.fillStyle = p.accent;
+    ell(g, -u * 0.3, u * 0.02, u * 0.3, u * 0.07);
+    // 깃 끝
+    g.fillStyle = p.dark;
+    for (let i = 0; i < 4; i++) {
+      const x = -u * (0.5 + i * 0.09);
+      tri(g, [
+        [x, -u * 0.02],
+        [x - u * 0.22, u * 0.04 + i * u * 0.03],
+        [x, u * 0.06],
+      ]);
+    }
+  } else {
+    g.rotate(-0.18 + flap * 0.08);
+    g.fillStyle = p.dark;
+    ell(g, -u * 0.04, 0, u * 0.3, u * 0.19);
+    g.fillStyle = p.accent;
+    ell(g, -u * 0.12, u * 0.03, u * 0.15, u * 0.08);
+  }
   g.restore();
 
   const hx = u * 0.36;
@@ -585,23 +826,35 @@ const bird: FormDrawer = (g, u, p, ph, t, j) => {
   g.fillStyle = p.body;
   ell(g, hx, hy, u * 0.21, u * 0.2);
 
-  // 볏
-  g.fillStyle = p.accent;
-  for (const a of [-0.5, -0.1, 0.3]) {
-    tri(g, [
-      [hx - u * 0.06, hy - u * 0.14],
-      [hx - u * 0.1 + Math.sin(a) * u * 0.3, hy - u * 0.44 - a * u * 0.1],
-      [hx + u * 0.06, hy - u * 0.12],
-    ]);
+  // 볏 — 있는 새와 없는 새를 가른다
+  if (tr.ear === 'point') {
+    g.fillStyle = p.accent;
+    for (const a of [-0.5, -0.1, 0.3]) {
+      tri(g, [
+        [hx - u * 0.06, hy - u * 0.14],
+        [hx - u * 0.1 + Math.sin(a) * u * 0.3, hy - u * 0.44 - a * u * 0.1],
+        [hx + u * 0.06, hy - u * 0.12],
+      ]);
+    }
   }
 
-  // 부리
+  // 부리 — 매는 굽고 참새는 짧고 뾰족하다
   g.fillStyle = p.accent;
-  tri(g, [
-    [hx + u * 0.14, hy - u * 0.04],
-    [hx + u * 0.44, hy + u * 0.02],
-    [hx + u * 0.14, hy + u * 0.09],
-  ]);
+  if (tr.beak === 'hooked') {
+    g.beginPath();
+    g.moveTo(hx + u * 0.13, hy - u * 0.06);
+    g.lineTo(hx + u * 0.36, hy - u * 0.02);
+    g.quadraticCurveTo(hx + u * 0.4, hy + u * 0.12, hx + u * 0.28, hy + u * 0.13);
+    g.lineTo(hx + u * 0.13, hy + u * 0.09);
+    g.closePath();
+    g.fill();
+  } else {
+    tri(g, [
+      [hx + u * 0.13, hy - u * 0.04],
+      [hx + u * 0.38, hy + u * 0.02],
+      [hx + u * 0.13, hy + u * 0.09],
+    ]);
+  }
 
   g.fillStyle = '#14121a';
   ell(g, hx + u * 0.07, hy - u * 0.03, u * 0.04, u * 0.045);
@@ -670,9 +923,15 @@ const golem: FormDrawer = (g, u, p, ph, t) => {
   for (const s of [-1, 1]) ell(g, s * u * 0.08, hy - u * 0.14, u * 0.045, u * 0.035);
 };
 
+/**
+ * 골격 → 그리는 함수.
+ *
+ * 예전엔 `horned` 골격을 따로 두고 종마다 덮어쓰는 표까지 있었다. 특징표가
+ * 생기면서 둘 다 필요 없어졌다 — 뿔은 이제 특징 하나일 뿐이라, 뿔 달린 짐승은
+ * 그냥 beast에 horn을 적으면 된다.
+ */
 const FORM_DRAWERS: Record<PetForm, FormDrawer> = {
-  beast: beast({ bulk: 1, horns: null, ear: 'point', tail: 'bush' }),
-  horned: beast({ bulk: 1.18, horns: 'ox', ear: 'round', tail: 'tuft' }),
+  beast,
   shell,
   saurian,
   serpent,
@@ -681,21 +940,12 @@ const FORM_DRAWERS: Record<PetForm, FormDrawer> = {
   golem,
 };
 
-/** 사슴은 소와 뿔이 달라야 한다. 골격은 같고 부속만 바꾼다. */
-const ANTLERED = beast({ bulk: 1.06, horns: 'antler', ear: 'long', tail: 'tuft' });
-const LONG_EARED = beast({ bulk: 0.92, horns: null, ear: 'long', tail: 'bush' });
-
-/** 종 하나가 골격 기본형과 다른 부속을 쓸 때. 표현일 뿐이라 여기 둔다. */
-const SPECIES_OVERRIDE: Record<string, FormDrawer> = {
-  whirlstag: ANTLERED,
-  meadowhare: LONG_EARED,
-};
-
 export function drawCreature(g: CanvasRenderingContext2D, o: CreatureOptions): void {
   const u = o.u;
   const t = o.t ?? 0;
   const pal = speciesPalette(o.speciesId, o.element);
-  const drawer = SPECIES_OVERRIDE[o.speciesId] ?? FORM_DRAWERS[o.form] ?? FORM_DRAWERS.beast;
+  const traits = traitsOf(o.speciesId);
+  const drawer = FORM_DRAWERS[o.form] ?? FORM_DRAWERS.beast;
 
   // 종마다 걸음 위상을 어긋나게 한다. 여섯 마리가 발을 맞춰 흔들면 군무가 된다.
   const n = hashId(o.speciesId);
@@ -720,7 +970,7 @@ export function drawCreature(g: CanvasRenderingContext2D, o: CreatureOptions): v
 
   withFx(g, o.x, o.y, u * 4.2, u * 3.4, fx, (c) => {
     if (o.flip) c.scale(-1, 1);
-    drawer(c, u, pal, ph, t, jitter);
+    drawer(c, u, pal, ph, t, jitter, traits);
   });
 }
 

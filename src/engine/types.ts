@@ -89,7 +89,10 @@ export function assertWithinCap(g: Stats, context: string): void {
  * 표를 숨겨두면 종을 추가할 때 데이터 검증이 잡아주지 못하고 조용히 기본 모양으로
  * 나온다.
  */
-export const PET_FORMS = ['beast', 'horned', 'shell', 'saurian', 'serpent', 'ray', 'bird', 'golem'] as const;
+// 뿔은 골격이 아니라 부속이다. 처음엔 'horned'를 따로 뒀는데, 특징표(render/species.ts)가
+// 생기면서 뿔·귀·꼬리가 전부 같은 층의 값이 됐다. 골격을 하나 더 두면 "뿔 달린 새"를
+// 표현할 수 없고, 뿔이 두 곳에 적히게 된다.
+export const PET_FORMS = ['beast', 'shell', 'saurian', 'serpent', 'ray', 'bird', 'golem'] as const;
 export type PetForm = (typeof PET_FORMS)[number];
 
 /** 종 정의. 데이터 파일에서 읽는 정적 값이다. */

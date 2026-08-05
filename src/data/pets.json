@@ -106,7 +106,7 @@
     ],
     "captureBaseRate": 0.3,
     "rarity": "uncommon",
-    "form": "horned",
+    "form": "beast",
     "evolveTo": {
       "speciesId": "granitewarden",
       "requiredLevel": 40,
@@ -820,7 +820,7 @@
     ],
     "captureBaseRate": 0.3,
     "rarity": "uncommon",
-    "form": "horned",
+    "form": "beast",
     "evolveTo": {
       "speciesId": "stormfalcon",
       "requiredLevel": 40,
