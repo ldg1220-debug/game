@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { drawField } from '../render/fieldRenderer';
 import { buildTileset, type Tileset } from '../render/tileset';
+import { screenInputToWorld } from '../render/iso';
 import { getMap, warpAt, zoneAt } from '../game/maps';
 import type { MoveInput } from '../game/movement';
 import { dangerLevel } from '../game/encounter';
@@ -18,7 +19,13 @@ import { useGame } from '../game/store';
 const VIEW_W = 800;
 const VIEW_H = 512;
 
-/** 키 → 방향. 방향키와 WASD를 모두 받는다. */
+/**
+ * 키 → **화면** 방향. 방향키와 WASD를 모두 받는다.
+ *
+ * 월드 방향이 아니라 화면 방향이다. 아이소메트릭에서 월드 축은 45° 기울어
+ * 있으므로, 위쪽 화살표를 월드 y-에 그대로 꽂으면 캐릭터가 오른쪽 위로 간다.
+ * 회전은 screenInputToWorld가 맡는다.
+ */
 const KEY_AXIS: Record<string, [number, number]> = {
   ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0],
   KeyW: [0, -1], KeyS: [0, 1], KeyA: [-1, 0], KeyD: [1, 0],
@@ -55,7 +62,7 @@ export function FieldScreen() {
     if (!canvas) return;
     const g = canvas.getContext('2d');
     if (!g) return;
-    tilesetRef.current ??= buildTileset(32);
+    tilesetRef.current ??= buildTileset();
 
     let raf = 0;
     let last = performance.now();
@@ -66,13 +73,15 @@ export function FieldScreen() {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
 
-      const input: MoveInput = { dx: 0, dy: 0 };
+      let kx = 0;
+      let ky = 0;
       for (const code of keysRef.current) {
         const axis = KEY_AXIS[code];
         if (!axis) continue;
-        if (axis[0] !== 0) input.dx = axis[0] as -1 | 1;
-        if (axis[1] !== 0) input.dy = axis[1] as -1 | 1;
+        if (axis[0] !== 0) kx = axis[0];
+        if (axis[1] !== 0) ky = axis[1];
       }
+      const input: MoveInput = screenInputToWorld(kx, ky);
 
       useGame.getState().tickField(dt, input);
 
@@ -146,7 +155,7 @@ export function FieldScreen() {
             </span>
           </div>
           <span className="tiny muted">
-            <kbd>WASD</kbd> / <kbd>←↑↓→</kbd> 이동 · 대각선 가능 · 걸음 {player.steps}
+            <kbd>WASD</kbd> / <kbd>←↑↓→</kbd> 이동 · 두 키를 같이 누르면 비스듬히 · 걸음 {player.steps}
           </span>
         </div>
 

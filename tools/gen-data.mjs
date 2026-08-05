@@ -66,6 +66,24 @@ const SPECIES = [
   ['skysuzerain',  '창공의주인', 'wind',  'fire',  'epic',     [1.15, 1.30, 1.05, 1.40], ['windSlash','gale','windAura','frenzy','mend']],
 ];
 
+/**
+ * 외형 골격.
+ *
+ * 이름이 곧 골격이다 — 등딱지 달린 것은 shell, 뿔 달린 네발은 horned, 목이 긴
+ * 거수는 saurian. 밸런스에는 들어가지 않지만 종마다 반드시 하나 있어야 하므로
+ * 표를 따로 두고 아래에서 누락을 확인한다.
+ */
+const FORM = {
+  bouldershell: 'shell',   dustmole: 'beast',     cragox: 'horned',
+  vinecarapace: 'shell',   granitewarden: 'golem', terrasovereign: 'saurian',
+  dewtail: 'beast',        brookotter: 'beast',   abyssray: 'ray',
+  frostscale: 'serpent',   currentwyrm: 'serpent', abysslord: 'saurian',
+  emberfox: 'beast',       ashnewt: 'serpent',    blazeboar: 'beast',
+  magmasnail: 'shell',     plumewing: 'bird',     pyrarch: 'saurian',
+  breezefinch: 'bird',     meadowhare: 'beast',   gustwolf: 'beast',
+  whirlstag: 'horned',     stormfalcon: 'bird',   skysuzerain: 'bird',
+};
+
 const BASE = { hp: 42, atk: 11, def: 10, spd: 11 };
 
 /**
@@ -110,6 +128,11 @@ const pets = SPECIES.map(([id, name, primary, secondary, rarity, rawMult, pool])
   skillPool: pool,
   captureBaseRate: CAPTURE[rarity],
   rarity,
+  form: (() => {
+    const f = FORM[id];
+    if (!f) throw new Error(`외형이 정해지지 않은 종: ${id}`);
+    return f;
+  })(),
 }));
 
 // 진화 사슬 — 각 속성의 uncommon 하나가 rare로 간다

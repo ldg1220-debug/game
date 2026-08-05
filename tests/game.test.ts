@@ -8,7 +8,17 @@ import { createDanger, dangerLevel, stepDanger, DEFAULT_ENCOUNTER } from '../src
 import { replayBattle } from '../src/game/replay';
 import { getSpecies, petToCombatant, rollEncounterParty } from '../src/game/party';
 import { createStanceSource } from '../src/game/stances';
-import { focusCamera } from '../src/render/fieldRenderer';
+import {
+  depth,
+  focusCamera,
+  isoX,
+  isoY,
+  mapBounds,
+  screenDir,
+  screenInputToWorld,
+  unproject,
+  visibleTiles,
+} from '../src/render/iso';
 
 /**
  * 필드 레이어 테스트.
@@ -481,25 +491,146 @@ describe('전투 태세', () => {
   });
 });
 
+/* ─────────────── 아이소메트릭 투영 ─────────────── */
+
+/**
+ * 투영은 화면으로만 확인할 수 있는 게 아니다. 좌표 변환·깊이 순서·입력 회전은
+ * 전부 순수 함수라서 여기서 붙들 수 있고, 실제로 이 셋이 어긋나면 화면에서는
+ * "뭔가 이상한데"로만 보여 원인을 찾는 데 한참 걸린다.
+ */
+describe('아이소메트릭 투영', () => {
+  it('투영과 역투영이 왕복한다', () => {
+    for (const [x, y] of [[0, 0], [3, 7], [12.5, 4.25], [-2, 9]] as const) {
+      const back = unproject(isoX(x, y), isoY(x, y));
+      expect(back.x).toBeCloseTo(x, 9);
+      expect(back.y).toBeCloseTo(y, 9);
+    }
+  });
+
+  it('타일 한 칸을 움직이면 화면에서 대각선으로 간다', () => {
+    // 아이소메트릭의 정의 그 자체다. 이게 깨지면 마름모가 아니게 된다.
+    expect(isoX(1, 0) - isoX(0, 0)).toBeGreaterThan(0);
+    expect(isoY(1, 0) - isoY(0, 0)).toBeGreaterThan(0);
+    expect(isoX(0, 1) - isoX(0, 0)).toBeLessThan(0);
+    expect(isoY(0, 1) - isoY(0, 0)).toBeGreaterThan(0);
+    // 폭이 높이의 두 배 — 2:1 비율
+    expect(isoX(1, 0) - isoX(0, 0)).toBe(2 * (isoY(1, 0) - isoY(0, 0)));
+  });
+
+  it('깊이가 큰 쪽이 화면에서 아래에 있다', () => {
+    // 그리는 순서의 근거다. y 하나로 정렬하면 대각선 이동에서 어긋난다.
+    const cells: [number, number][] = [[0, 0], [1, 0], [0, 1], [3, 2], [2, 3], [5, 5]];
+    for (const a of cells) {
+      for (const b of cells) {
+        if (depth(...a) < depth(...b)) {
+          expect(isoY(...a)).toBeLessThan(isoY(...b));
+        }
+        // 깊이가 같으면 화면 y도 같다 — 같은 줄이다
+        if (depth(...a) === depth(...b)) expect(isoY(...a)).toBe(isoY(...b));
+      }
+    }
+  });
+});
+
+describe('화면 기준 입력', () => {
+  it('화살표 넷이 화면의 상하좌우가 된다', () => {
+    // 위로 가면 화면에서 위로 가야 한다. 월드 축에 그대로 꽂으면 오른쪽 위로 간다.
+    const cases: [[number, number], [number, number]][] = [
+      [[0, -1], [-1, -1]],
+      [[0, 1], [1, 1]],
+      [[-1, 0], [-1, 1]],
+      [[1, 0], [1, -1]],
+    ];
+    for (const [[sx, sy], [dx, dy]] of cases) {
+      expect(screenInputToWorld(sx, sy)).toEqual({ dx, dy });
+      // 실제로 화면에서 그 방향인지 확인한다
+      const mx = isoX(dx, dy);
+      const my = isoY(dx, dy);
+      expect(Math.sign(Math.round(mx))).toBe(sx);
+      expect(Math.sign(Math.round(my))).toBe(sy);
+    }
+  });
+
+  it('두 키를 같이 누르면 월드 축 넷이 나온다', () => {
+    expect(screenInputToWorld(1, -1)).toEqual({ dx: 0, dy: -1 });
+    expect(screenInputToWorld(-1, -1)).toEqual({ dx: -1, dy: 0 });
+    expect(screenInputToWorld(1, 1)).toEqual({ dx: 1, dy: 0 });
+    expect(screenInputToWorld(-1, 1)).toEqual({ dx: 0, dy: 1 });
+  });
+
+  it('여덟 방향이 빠짐없이 서로 다르게 나온다', () => {
+    const seen = new Set<string>();
+    for (const sx of [-1, 0, 1]) {
+      for (const sy of [-1, 0, 1]) {
+        if (sx === 0 && sy === 0) continue;
+        const w = screenInputToWorld(sx, sy);
+        seen.add(`${w.dx},${w.dy}`);
+      }
+    }
+    expect(seen.size).toBe(8);
+    expect(seen.has('0,0')).toBe(false);
+  });
+
+  it('월드 방향과 화면 방향이 45° 어긋난 채 짝을 이룬다', () => {
+    // 월드 "위"는 화면에서 오른쪽 위다. 스프라이트가 이 표를 믿고 얼굴을 돌린다.
+    expect(screenDir('up')).toBe('ne');
+    expect(screenDir('down')).toBe('sw');
+    expect(screenDir('upLeft')).toBe('n');
+    expect(screenDir('downRight')).toBe('s');
+    const all = new Set(
+      ['up', 'down', 'left', 'right', 'upLeft', 'upRight', 'downLeft', 'downRight'].map(screenDir),
+    );
+    expect(all.size).toBe(8);
+  });
+});
+
 /* ─────────────── 카메라 ─────────────── */
 
 describe('카메라', () => {
   it('맵 밖을 비추지 않는다', () => {
     const map = getMap('meadow');
+    const b = mapBounds(map.width, map.height);
     for (const [x, y] of [[0, 0], [map.width - 1, map.height - 1], [15, 10]] as const) {
-      const cam = focusCamera(map, createPlayer('meadow', x, y), 800, 512);
-      expect(cam.x).toBeGreaterThanOrEqual(0);
-      expect(cam.y).toBeGreaterThanOrEqual(0);
-      expect(cam.x + 800 / map.tileSize).toBeLessThanOrEqual(map.width + 1e-9);
-      expect(cam.y + 512 / map.tileSize).toBeLessThanOrEqual(map.height + 1e-9);
+      const cam = focusCamera(map.width, map.height, x, y, 800, 512);
+      expect(cam.x - 400).toBeGreaterThanOrEqual(b.minX - 1e-9);
+      expect(cam.x + 400).toBeLessThanOrEqual(b.maxX + 1e-9);
+      expect(cam.y - 256).toBeGreaterThanOrEqual(b.minY - 1e-9);
+      expect(cam.y + 256).toBeLessThanOrEqual(b.maxY + 1e-9);
     }
   });
 
   it('맵이 화면보다 작으면 가운데 정렬한다', () => {
     const map = getMap('village');
-    const cam = focusCamera(map, createPlayer('village', 12, 11), 2000, 2000);
-    expect(cam.x).toBeLessThan(0);
-    expect(cam.x).toBe((map.width - 2000 / map.tileSize) / 2);
+    const b = mapBounds(map.width, map.height);
+    const cam = focusCamera(map.width, map.height, 12, 11, 4000, 4000);
+    expect(cam.x).toBe((b.minX + b.maxX) / 2);
+    expect(cam.y).toBe((b.minY + b.maxY) / 2);
+  });
+
+  it('보이는 타일 범위가 화면에 실제로 걸리는 칸을 모두 담는다', () => {
+    const map = getMap('meadow');
+    const cam = focusCamera(map.width, map.height, 15, 10, 800, 512);
+    const r = visibleTiles(cam, 800, 512, map.width, map.height, 0);
+    // 화면 안에 중심이 들어오는 칸은 전부 범위 안에 있어야 한다. 하나라도
+    // 빠지면 걸어갈 때 타일이 깜빡인다.
+    for (let y = 0; y < map.height; y++) {
+      for (let x = 0; x < map.width; x++) {
+        const sx = isoX(x, y) - cam.x;
+        const sy = isoY(x, y) - cam.y;
+        if (Math.abs(sx) > 400 || Math.abs(sy) > 256) continue;
+        expect(x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1, `(${x},${y})`).toBe(true);
+      }
+    }
+  });
+
+  it('보이는 범위가 맵 밖으로 나가지 않는다', () => {
+    const map = getMap('village');
+    const cam = focusCamera(map.width, map.height, 0, 0, 800, 512);
+    const r = visibleTiles(cam, 800, 512, map.width, map.height);
+    expect(r.x0).toBeGreaterThanOrEqual(0);
+    expect(r.y0).toBeGreaterThanOrEqual(0);
+    expect(r.x1).toBeLessThan(map.width);
+    expect(r.y1).toBeLessThan(map.height);
   });
 });
 

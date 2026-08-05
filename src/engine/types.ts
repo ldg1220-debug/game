@@ -81,6 +81,17 @@ export function assertWithinCap(g: Stats, context: string): void {
 
 /* ─────────────── 펫 ─────────────── */
 
+/**
+ * 외형 골격.
+ *
+ * 밸런스에는 전혀 들어가지 않는다 — 렌더러가 몸통을 어떻게 조립할지만 정한다.
+ * 그래도 데이터에 두는 이유는, 이게 종의 성질이기 때문이다. 렌더러 안에 id→외형
+ * 표를 숨겨두면 종을 추가할 때 데이터 검증이 잡아주지 못하고 조용히 기본 모양으로
+ * 나온다.
+ */
+export const PET_FORMS = ['beast', 'horned', 'shell', 'saurian', 'serpent', 'ray', 'bird', 'golem'] as const;
+export type PetForm = (typeof PET_FORMS)[number];
+
 /** 종 정의. 데이터 파일에서 읽는 정적 값이다. */
 export interface PetSpecies {
   id: string;
@@ -93,6 +104,8 @@ export interface PetSpecies {
   /** 기본 포획률 0~1 */
   captureBaseRate: number;
   rarity: Rarity;
+  /** 그림용 골격. 능력치에는 영향이 없다. */
+  form: PetForm;
   evolveTo?: { speciesId: string; requiredLevel: number; itemId: string };
 }
 

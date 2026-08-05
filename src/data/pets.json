@@ -32,7 +32,8 @@
       "harden"
     ],
     "captureBaseRate": 0.42,
-    "rarity": "common"
+    "rarity": "common",
+    "form": "shell"
   },
   {
     "id": "dustmole",
@@ -67,7 +68,8 @@
       "stoneThrow"
     ],
     "captureBaseRate": 0.42,
-    "rarity": "common"
+    "rarity": "common",
+    "form": "beast"
   },
   {
     "id": "cragox",
@@ -104,6 +106,7 @@
     ],
     "captureBaseRate": 0.3,
     "rarity": "uncommon",
+    "form": "horned",
     "evolveTo": {
       "speciesId": "granitewarden",
       "requiredLevel": 40,
@@ -144,7 +147,8 @@
       "bind"
     ],
     "captureBaseRate": 0.3,
-    "rarity": "uncommon"
+    "rarity": "uncommon",
+    "form": "shell"
   },
   {
     "id": "granitewarden",
@@ -180,7 +184,8 @@
       "guardBreak"
     ],
     "captureBaseRate": 0.18,
-    "rarity": "rare"
+    "rarity": "rare",
+    "form": "golem"
   },
   {
     "id": "terrasovereign",
@@ -217,7 +222,8 @@
       "ironWall"
     ],
     "captureBaseRate": 0.08,
-    "rarity": "epic"
+    "rarity": "epic",
+    "form": "saurian"
   },
   {
     "id": "dewtail",
@@ -252,7 +258,8 @@
       "strike"
     ],
     "captureBaseRate": 0.42,
-    "rarity": "common"
+    "rarity": "common",
+    "form": "beast"
   },
   {
     "id": "brookotter",
@@ -287,7 +294,8 @@
       "lull"
     ],
     "captureBaseRate": 0.42,
-    "rarity": "common"
+    "rarity": "common",
+    "form": "beast"
   },
   {
     "id": "abyssray",
@@ -323,7 +331,8 @@
       "harden"
     ],
     "captureBaseRate": 0.3,
-    "rarity": "uncommon"
+    "rarity": "uncommon",
+    "form": "ray"
   },
   {
     "id": "frostscale",
@@ -360,6 +369,7 @@
     ],
     "captureBaseRate": 0.3,
     "rarity": "uncommon",
+    "form": "serpent",
     "evolveTo": {
       "speciesId": "currentwyrm",
       "requiredLevel": 40,
@@ -400,7 +410,8 @@
       "guardBreak"
     ],
     "captureBaseRate": 0.18,
-    "rarity": "rare"
+    "rarity": "rare",
+    "form": "serpent"
   },
   {
     "id": "abysslord",
@@ -437,7 +448,8 @@
       "mend"
     ],
     "captureBaseRate": 0.08,
-    "rarity": "epic"
+    "rarity": "epic",
+    "form": "saurian"
   },
   {
     "id": "emberfox",
@@ -472,7 +484,8 @@
       "flare"
     ],
     "captureBaseRate": 0.42,
-    "rarity": "common"
+    "rarity": "common",
+    "form": "beast"
   },
   {
     "id": "ashnewt",
@@ -507,7 +520,8 @@
       "strike"
     ],
     "captureBaseRate": 0.42,
-    "rarity": "common"
+    "rarity": "common",
+    "form": "serpent"
   },
   {
     "id": "blazeboar",
@@ -542,7 +556,8 @@
       "frenzy"
     ],
     "captureBaseRate": 0.3,
-    "rarity": "uncommon"
+    "rarity": "uncommon",
+    "form": "beast"
   },
   {
     "id": "magmasnail",
@@ -579,6 +594,7 @@
     ],
     "captureBaseRate": 0.3,
     "rarity": "uncommon",
+    "form": "shell",
     "evolveTo": {
       "speciesId": "plumewing",
       "requiredLevel": 40,
@@ -619,7 +635,8 @@
       "guardBreak"
     ],
     "captureBaseRate": 0.18,
-    "rarity": "rare"
+    "rarity": "rare",
+    "form": "bird"
   },
   {
     "id": "pyrarch",
@@ -656,7 +673,8 @@
       "mend"
     ],
     "captureBaseRate": 0.08,
-    "rarity": "epic"
+    "rarity": "epic",
+    "form": "saurian"
   },
   {
     "id": "breezefinch",
@@ -691,7 +709,8 @@
       "feint"
     ],
     "captureBaseRate": 0.42,
-    "rarity": "common"
+    "rarity": "common",
+    "form": "bird"
   },
   {
     "id": "meadowhare",
@@ -726,7 +745,8 @@
       "lull"
     ],
     "captureBaseRate": 0.42,
-    "rarity": "common"
+    "rarity": "common",
+    "form": "beast"
   },
   {
     "id": "gustwolf",
@@ -762,7 +782,8 @@
       "feint"
     ],
     "captureBaseRate": 0.3,
-    "rarity": "uncommon"
+    "rarity": "uncommon",
+    "form": "beast"
   },
   {
     "id": "whirlstag",
@@ -799,6 +820,7 @@
     ],
     "captureBaseRate": 0.3,
     "rarity": "uncommon",
+    "form": "horned",
     "evolveTo": {
       "speciesId": "stormfalcon",
       "requiredLevel": 40,
@@ -839,7 +861,8 @@
       "guardBreak"
     ],
     "captureBaseRate": 0.18,
-    "rarity": "rare"
+    "rarity": "rare",
+    "form": "bird"
   },
   {
     "id": "skysuzerain",
@@ -876,6 +899,7 @@
       "mend"
     ],
     "captureBaseRate": 0.08,
-    "rarity": "epic"
+    "rarity": "epic",
+    "form": "bird"
   }
 ]

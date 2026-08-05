@@ -60,14 +60,23 @@ export function BattleScreen() {
     return () => clearTimeout(id);
   }, [cursor, paused, done, speed, stops.length]);
 
-  // 그리기
+  // 그리기.
+  //
+  // 이펙트는 "이 시점이 화면에 뜬 지 얼마나 됐는가"로 진행한다. 재생 시점이
+  // 바뀔 때마다 시계를 0으로 되돌린다 — 그러지 않으면 되감기했을 때 이미 다 끝난
+  // 이펙트가 나오고, 배속을 올리면 앞 타격의 잔상이 다음 타격에 겹친다.
   useEffect(() => {
     const canvas = canvasRef.current;
     const g = canvas?.getContext('2d');
     if (!g || !state) return;
+    const since = performance.now();
     let raf = 0;
-    const frame = () => {
-      drawBattle(g, state.units, getMap(useGame.getState().player.mapId).indoor);
+    const frame = (now: number) => {
+      drawBattle(g, state.units, {
+        indoor: getMap(useGame.getState().player.mapId).indoor,
+        age: now - since,
+        impact: state.impact,
+      });
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);

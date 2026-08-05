@@ -18,6 +18,7 @@ import {
   ELEMENTS,
   GROWTH_SCORE_CAP,
   growthScore,
+  PET_FORMS,
   type Item,
   type PetSpecies,
   type Skill,
@@ -31,6 +32,7 @@ const ElementSchema = z.enum(ELEMENTS);
 const RaritySchema = z.enum(['common', 'uncommon', 'rare', 'epic']);
 const TargetSchema = z.enum(['oneEnemy', 'allEnemies', 'oneAlly', 'allAllies', 'self']);
 const AilmentSchema = z.enum(['paralysis', 'sleep', 'poison', 'confusion']);
+const PetFormSchema = z.enum(PET_FORMS);
 
 /** 능력치는 음수가 될 수 없다. 성장률도 같은 모양을 쓰므로 실수를 허용한다. */
 const StatsSchema = z.strictObject({
@@ -58,6 +60,7 @@ export const PetSpeciesSchema = z.strictObject({
   skillPool: z.array(z.string().min(1)).min(1),
   captureBaseRate: z.number().gt(0).max(1),
   rarity: RaritySchema,
+  form: PetFormSchema,
   evolveTo: z
     .strictObject({
       speciesId: z.string().min(1),
