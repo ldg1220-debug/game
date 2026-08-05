@@ -16,5 +16,5 @@
     "noEmit": true,
     "types": ["vitest/globals", "node"]
   },
-  "include": ["src", "tests", "tools"]
+  "include": ["src", "tests", "tools", "arbiter"]
 }

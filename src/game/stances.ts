@@ -138,6 +138,49 @@ export function createStanceSource(
   };
 }
 
+/** 대전에서 고를 수 있는 태세. 남의 펫은 잡을 수 없다. */
+export const DUEL_STANCES = ['aggressive', 'defensive', 'flee'] as const;
+export type DuelStance = (typeof DUEL_STANCES)[number];
+
+export function isDuelStance(v: string): v is DuelStance {
+  return (DUEL_STANCES as readonly string[]).includes(v);
+}
+
+/**
+ * 양쪽 다 사람이 태세를 고르는 전투.
+ *
+ * PvE의 createStanceSource는 아군만 태세를 따르고 적군은 AI에 맡긴다. 대전에서는
+ * 양쪽 모두 사람이 고른 태세를 따라야 한다.
+ *
+ * 상대편 커맨드를 정할 때는 **아군과 적군을 뒤바꾼 시야**를 넘긴다. decide는
+ * "내 편은 view.allies, 상대는 view.enemies"라고만 알고 있으므로, 시야를 뒤집어
+ * 주면 회복 대상 고르기나 도주 판정 같은 것이 상대 입장에서 그대로 돈다. 여기서
+ * 뒤집는 걸 잊으면 상대가 내 부상자를 회복시킨다.
+ */
+export function createDuelSource(
+  allyStance: DuelStance,
+  enemyStance: DuelStance,
+  catalog: BattleCatalog,
+): CommandSource {
+  return (view: BattleView): Record<string, BattleCommand> => {
+    const out: Record<string, BattleCommand> = {};
+    const mirrored: BattleView = { allies: view.enemies, enemies: view.allies };
+
+    for (const [v, stance] of [
+      [view, allyStance],
+      [mirrored, enemyStance],
+    ] as const) {
+      const foes = alive(v.enemies);
+      const target = weakestPet(v.enemies) ?? foes[0];
+      for (const u of alive(v.allies)) {
+        // 포획 도구는 쓰이지 않는다 — 대전 태세에 capture가 없다
+        out[u.id] = decide(u, v, target, stance, catalog, '');
+      }
+    }
+    return out;
+  };
+}
+
 function decide(
   u: CombatantView,
   view: BattleView,

@@ -13,5 +13,13 @@
     "energyBase": 20,
     "energyPerLevel": 1.5,
     "skillSlots": 4
+  },
+  "character": {
+    "startLevel": 5,
+    "maxLevel": 99,
+    "startCharm": 12,
+    "baseStats": { "hp": 220, "atk": 30, "def": 22, "spd": 24 },
+    "perLevel": { "hp": 8, "atk": 0.8, "def": 0.8, "spd": 0.8 },
+    "startSkills": ["strike", "gore", "harden", "mend"]
   }
 }

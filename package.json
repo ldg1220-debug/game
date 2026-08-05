@@ -13,7 +13,8 @@
     "battle:demo": "vite-node tools/battle-demo.ts",
     "gen:maps": "node tools/gen-maps.mjs",
     "gen": "pnpm gen:data && pnpm gen:maps",
-    "simulate": "vite-node tools/simulate.ts"
+    "simulate": "vite-node tools/simulate.ts",
+    "serve:arbiter": "vite-node arbiter/main.ts"
   },
   "dependencies": {
     "react": "^18.3.1",

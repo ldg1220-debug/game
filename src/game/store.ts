@@ -43,7 +43,7 @@ import { canEvolve, evolve, rerollGrowth, type EvolveMode } from '../engine/grow
 import { getMap, warpAt, zoneAt } from './maps';
 import type { EncounterZone } from './mapTypes';
 import { createPlayer, stepMovement, type MoveInput, type PlayerState } from './movement';
-import { getSpecies, makeCharacter, petToCombatant, rollEncounterParty } from './party';
+import { CHARACTER, characterBaseStats, getSpecies, makeCharacter, petToCombatant, rollEncounterParty } from './party';
 import { createStanceSource, type Stance } from './stances';
 import { SAVE_VERSION, loadSave, type SaveFile } from './save';
 
@@ -144,15 +144,17 @@ export interface GameState {
 }
 
 function startingCharacter(): CharacterState {
-  const baseStats = { hp: 260, atk: 34, def: 26, spd: 28 };
+  // 숫자는 field.json에 있다. 코드에 박아두면 규칙 2 위반이고, 서버가 능력치를
+  // 재계산해 검증할 근거도 사라진다.
+  const baseStats = characterBaseStats(CHARACTER.startLevel);
   return {
     name: '탐험가',
-    level: 5,
+    level: CHARACTER.startLevel,
     exp: 0,
-    charm: 12,
+    charm: CHARACTER.startCharm,
     baseStats,
     hp: baseStats.hp,
-    skills: ['strike', 'gore', 'harden', 'mend'],
+    skills: [...CHARACTER.startSkills],
   };
 }
 

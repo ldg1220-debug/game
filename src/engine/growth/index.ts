@@ -175,6 +175,27 @@ export function createPetInstance(
  */
 const FP_EPSILON = 1e-9;
 
+/**
+ * 레벨과 성장률만으로 계산한 능력치.
+ *
+ * 개체의 currentStats는 레벨업마다 성장률을 더해 쌓은 값이라, 실은 `종족 기본 +
+ * 성장률 × (레벨-1)` 이라는 닫힌 식과 같다. 생성 시점(createPetInstance)도
+ * 레벨업(levelUp)도 결국 이 식을 만족하므로, 저장된 값을 믿지 않고 다시 계산할 수
+ * 있다 — 멀티플레이에서 세이브를 검증하려면 반드시 필요하다.
+ *
+ * 더하는 순서가 달라 부동소수점 끝자리가 어긋날 수 있으므로, 비교할 때는 오차를
+ * 허용해야 한다. 값 자체는 battleStats가 어차피 내림한다.
+ */
+export function expectedStats(base: Stats, growth: Stats, level: number): Stats {
+  const levels = Math.max(0, level - 1);
+  return {
+    hp: base.hp + growth.hp * levels,
+    atk: base.atk + growth.atk * levels,
+    def: base.def + growth.def * levels,
+    spd: base.spd + growth.spd * levels,
+  };
+}
+
 /** 전투와 화면에 넘길 정수 능력치. 소수점 누적분은 개체에 그대로 남는다. */
 export function battleStats(pet: PetInstance): Stats {
   const floor = (v: number) => Math.floor(v + FP_EPSILON);

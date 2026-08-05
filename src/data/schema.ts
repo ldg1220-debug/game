@@ -322,6 +322,16 @@ export const FieldSchema = z.strictObject({
     energyPerLevel: z.number().nonnegative(),
     skillSlots: z.number().int().min(1).max(8),
   }),
+  // 주인공 능력치. 코드에 박혀 있던 것을 여기로 옮겼다 — 밸런스 숫자가 코드에
+  // 있으면 규칙 2 위반일 뿐 아니라, 서버가 능력치를 재계산해 검증할 수 없다.
+  character: z.strictObject({
+    startLevel: z.number().int().min(1),
+    maxLevel: z.number().int().min(1).max(99),
+    startCharm: z.number().nonnegative(),
+    baseStats: StatsSchema,
+    perLevel: StatsSchema,
+    startSkills: z.array(z.string().min(1)).min(1),
+  }),
 });
 
 function checkField(raw: unknown, errors: string[]): void {
@@ -337,6 +347,9 @@ function checkField(raw: unknown, errors: string[]): void {
   // 유예가 너무 길면 인카운터가 사실상 사라지고, 게이지를 보여줄 이유도 없어진다
   if (c.encounter.graceSteps > 60) {
     errors.push(`field.encounter: 유예 걸음(${c.encounter.graceSteps})이 지나치게 길다`);
+  }
+  if (c.character.startLevel > c.character.maxLevel) {
+    errors.push('field.character: 시작 레벨이 최대 레벨보다 높다');
   }
 }
 

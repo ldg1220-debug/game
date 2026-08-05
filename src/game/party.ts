@@ -12,7 +12,7 @@ import spiritsJson from '../data/spirits.json';
 import type { Combatant, Row } from '../engine/battle';
 import { battleStats, createPetInstance } from '../engine/growth';
 import type { RNG } from '../engine/rng';
-import type { PetInstance, PetSpecies, Spirit } from '../engine/types';
+import type { PetInstance, PetSpecies, Spirit, Stats } from '../engine/types';
 import type { EncounterZone } from './mapTypes';
 
 export interface CombatantConfig {
@@ -21,6 +21,25 @@ export interface CombatantConfig {
   skillSlots: number;
 }
 export const DEFAULT_COMBATANT: CombatantConfig = fieldJson.combatant;
+
+/** 주인공 규칙. 능력치가 데이터에 있어야 서버가 재계산해 검증할 수 있다. */
+export const CHARACTER = fieldJson.character;
+
+/**
+ * 레벨에 따른 주인공 기본 능력치(장비 제외).
+ *
+ * 서버가 이 함수로 다시 계산해 클라이언트가 보낸 값과 맞춰본다. 저장된 값을
+ * 그대로 믿으면 세이브 파일 한 줄 고쳐서 공격력 9999가 된다.
+ */
+export function characterBaseStats(level: number, cfg = CHARACTER): Stats {
+  const round = (v: number) => Math.round(v * 10) / 10;
+  return {
+    hp: Math.round(cfg.baseStats.hp + cfg.perLevel.hp * level),
+    atk: round(cfg.baseStats.atk + cfg.perLevel.atk * level),
+    def: round(cfg.baseStats.def + cfg.perLevel.def * level),
+    spd: round(cfg.baseStats.spd + cfg.perLevel.spd * level),
+  };
+}
 
 export const SPECIES: Record<string, PetSpecies> = Object.fromEntries(
   (petsJson as PetSpecies[]).map((s) => [s.id, s]),
