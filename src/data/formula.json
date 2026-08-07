@@ -1,0 +1,60 @@
+{
+  "battle": {
+    "maxRounds": 200,
+    "maxPartySize": 5,
+    "energyRegenPerRound": 3
+  },
+  "order": {
+    "jitterMin": 0.9,
+    "jitterMax": 1.1
+  },
+  "hit": {
+    "base": 0.75,
+    "spdWeight": 0.005,
+    "min": 0.5,
+    "max": 0.99
+  },
+  "damage": {
+    "defFactor": 0.5,
+    "varianceMin": 0.95,
+    "varianceMax": 1.05,
+    "floor": 1
+  },
+  "element": {
+    "advantage": 1.25,
+    "neutral": 1.0,
+    "disadvantage": 0.8,
+    "primaryWeight": 0.7,
+    "secondaryWeight": 0.3
+  },
+  "crit": {
+    "base": 0.05,
+    "spdWeight": 0.0004,
+    "multiplier": 1.5,
+    "max": 0.5
+  },
+  "row": {
+    "backTakenPhysical": 0.8,
+    "backDealtMelee": 0.8
+  },
+  "defend": {
+    "damageTaken": 0.5
+  },
+  "ailment": {
+    "resistBase": 0.05,
+    "resistSpdWeight": 0.004,
+    "resistMax": 0.75,
+    "paralysisMinTurns": 1,
+    "paralysisMaxTurns": 3,
+    "poisonMaxHpRatio": 0.05
+  },
+  "flee": {
+    "base": 0.4,
+    "spdWeight": 0.01,
+    "min": 0.05,
+    "max": 0.95
+  },
+  "capture": {
+    "escapeOnFail": 0.12
+  }
+}

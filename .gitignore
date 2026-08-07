@@ -1,0 +1,8 @@
+node_modules/
+dist/
+__pycache__/
+.venv/
+*.db
+tsconfig.tsbuildinfo
+balance-curve.csv
+stoneage.db

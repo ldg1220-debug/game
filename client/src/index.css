@@ -1,0 +1,423 @@
+@import 'tailwindcss';
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap');
+
+@theme {
+  --font-heading: 'Cinzel', serif;
+  --font-body: 'Poppins', system-ui, sans-serif;
+
+  --color-ink-950: #0a0a1a;
+  --color-ink-900: #10101f;
+  --color-ink-800: #171730;
+  --color-ink-700: #1f1f42;
+  --color-ink-600: #2a2a56;
+  --color-ink-500: #3d3d78;
+
+  --color-gold-500: #d4af37;
+  --color-gold-400: #e6c866;
+  --color-gold-300: #f0dc9a;
+
+  --color-elem-fire: #e2543f;
+  --color-elem-water: #3f8fe2;
+  --color-elem-earth: #5aa858;
+  --color-elem-wind: #d9c04a;
+  --color-elem-none: #9298a8;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background: radial-gradient(ellipse at top, #1c1c3d 0%, #0a0a1a 70%);
+  color: #e8e6f5;
+  min-height: 100svh;
+}
+
+h1,
+h2,
+h3,
+.font-heading {
+  font-family: var(--font-heading);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-ink-500);
+  border-radius: 4px;
+}
+
+.panel {
+  background: linear-gradient(180deg, rgba(31, 31, 66, 0.9), rgba(16, 16, 31, 0.95));
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+.particle {
+  position: absolute;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(230, 200, 102, 0.9), rgba(230, 200, 102, 0));
+  pointer-events: none;
+  animation: float-up linear infinite;
+}
+
+/*
+ * 펫 모션 (완성도 가이드 3.1~3.2절).
+ *
+ * 래스터 스프라이트 시트 대신 SVG 전체에 CSS 변형을 건다. 42종 전부에 추가
+ * 에셋 없이 같은 모션이 적용된다. 프레임 수와 지속시간은 가이드 스펙을 따랐다.
+ *
+ * 반전(pet-flip)이 걸린 스프라이트는 transform이 덮어써지면 반전이 풀리므로,
+ * 반전 상태의 키프레임을 짝으로 둔다. CSS 변수로 반전 계수를 넘겨 키프레임
+ * 하나로 양쪽을 처리한다.
+ */
+.pet-flip {
+  --flip: -1;
+}
+svg[class*='pet-'] {
+  --flip: 1;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Idle: 4프레임 × 200ms = 800ms, 무한 루프. 부드러운 호흡 */
+.pet-idle {
+  animation: pet-idle 0.8s steps(1, end) infinite;
+}
+@keyframes pet-idle {
+  0% {
+    transform: scaleX(var(--flip)) translateY(0);
+  }
+  25% {
+    transform: scaleX(var(--flip)) translateY(-5px);
+  }
+  50% {
+    transform: scaleX(var(--flip)) translateY(0);
+  }
+  75% {
+    transform: scaleX(var(--flip)) translateY(5px);
+  }
+  100% {
+    transform: scaleX(var(--flip)) translateY(0);
+  }
+}
+
+/* Walk: 6프레임 × 150ms = 900ms, 무한 루프. 좌우로 기울며 걷기 */
+.pet-walk {
+  animation: pet-walk 0.9s steps(1, end) infinite;
+}
+@keyframes pet-walk {
+  0% {
+    transform: scaleX(var(--flip)) translateY(0) rotate(0deg);
+  }
+  16.6% {
+    transform: scaleX(var(--flip)) translateY(-3px) rotate(-4deg);
+  }
+  33.3% {
+    transform: scaleX(var(--flip)) translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: scaleX(var(--flip)) translateY(0) rotate(0deg);
+  }
+  66.6% {
+    transform: scaleX(var(--flip)) translateY(-3px) rotate(4deg);
+  }
+  83.3% {
+    transform: scaleX(var(--flip)) translateY(0) rotate(2deg);
+  }
+  100% {
+    transform: scaleX(var(--flip)) translateY(0) rotate(0deg);
+  }
+}
+
+/* Attack: 8프레임 × 100ms = 800ms, 1회. 준비(뒤로) → 돌진 → 복귀, 임팩트는 5프레임 */
+.pet-attack {
+  animation: pet-attack 0.8s ease-out 1;
+}
+@keyframes pet-attack {
+  0% {
+    transform: scaleX(var(--flip)) translateX(0);
+  }
+  25% {
+    transform: scaleX(var(--flip)) translateX(-8px) scale(0.96);
+  }
+  50% {
+    transform: scaleX(var(--flip)) translateX(18px) scale(1.08);
+  }
+  62.5% {
+    transform: scaleX(var(--flip)) translateX(14px) scale(1.04);
+  }
+  100% {
+    transform: scaleX(var(--flip)) translateX(0) scale(1);
+  }
+}
+
+/* Hurt: 3프레임 × 100ms = 300ms, 1회. 밀려남 → 흔들림 → 복귀 */
+.pet-hurt {
+  animation: pet-hurt 0.3s ease-out 1;
+}
+@keyframes pet-hurt {
+  0% {
+    transform: scaleX(var(--flip)) translateX(0);
+    filter: none;
+  }
+  33% {
+    transform: scaleX(var(--flip)) translateX(-10px);
+    filter: brightness(2.2) saturate(0.4);
+  }
+  66% {
+    transform: scaleX(var(--flip)) translateX(6px);
+    filter: brightness(1.4);
+  }
+  100% {
+    transform: scaleX(var(--flip)) translateX(0);
+    filter: none;
+  }
+}
+
+/* Faint: 4프레임 × 200ms = 800ms, 1회. 무릎 → 쓰러짐 → 정지 */
+.pet-faint {
+  animation: pet-faint 0.8s ease-in forwards;
+}
+@keyframes pet-faint {
+  0% {
+    transform: scaleX(var(--flip)) rotate(0deg) translateY(0);
+    opacity: 1;
+  }
+  25% {
+    transform: scaleX(var(--flip)) rotate(0deg) translateY(6px) scaleY(0.9);
+  }
+  50% {
+    transform: scaleX(var(--flip)) rotate(-40deg) translateY(10px);
+  }
+  100% {
+    transform: scaleX(var(--flip)) rotate(-85deg) translateY(14px);
+    opacity: 0.35;
+  }
+}
+
+/* Victory: 6프레임 × 200ms = 1200ms, 1회. 점프 → 체공 → 착지 */
+.pet-victory {
+  animation: pet-victory 1.2s ease-out 1;
+}
+@keyframes pet-victory {
+  0% {
+    transform: scaleX(var(--flip)) translateY(0);
+  }
+  16.6% {
+    transform: scaleX(var(--flip)) translateY(-6px) scaleY(1.06);
+  }
+  33.3% {
+    transform: scaleX(var(--flip)) translateY(-20px) rotate(-8deg);
+  }
+  50% {
+    transform: scaleX(var(--flip)) translateY(-22px) rotate(8deg);
+  }
+  66.6% {
+    transform: scaleX(var(--flip)) translateY(-8px) rotate(0deg);
+  }
+  83.3% {
+    transform: scaleX(var(--flip)) translateY(0) scaleY(0.92);
+  }
+  100% {
+    transform: scaleX(var(--flip)) translateY(0) scaleY(1);
+  }
+}
+
+/*
+ * 전투 화면 효과.
+ */
+
+/* 전투 진입 시 등장 */
+.animate-enter-left {
+  animation: enter-left 0.5s ease-out;
+}
+@keyframes enter-left {
+  from {
+    transform: translateX(-40px);
+    opacity: 0;
+  }
+}
+.animate-enter-right {
+  animation: enter-right 0.5s ease-out;
+}
+@keyframes enter-right {
+  from {
+    transform: scaleX(-1) translateX(-40px);
+    opacity: 0;
+  }
+  to {
+    transform: scaleX(-1);
+  }
+}
+
+/* 속성 입자 (가이드 5.1) */
+.particle-fly {
+  animation: particle-fly 0.55s ease-out forwards;
+}
+@keyframes particle-fly {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(0.3);
+    opacity: 0;
+  }
+}
+.particle-burst {
+  animation: particle-burst 0.4s ease-out forwards;
+}
+@keyframes particle-burst {
+  0% {
+    transform: scale(0.2);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+/* 크리티컬 시 전투 화면 흔들림 (가이드 4.3: 5px, 100ms) */
+.battle-shake {
+  animation: battle-shake 0.1s ease-in-out 2;
+}
+@keyframes battle-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+/* 상성 히트 시 화면 섬광 */
+.animate-flash {
+  animation: flash 0.45s ease-out;
+}
+@keyframes flash {
+  0% {
+    background-color: rgba(255, 255, 255, 0.18);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+/*
+ * UI 전환 및 상호작용 (가이드 7.1).
+ */
+
+/* 페이지 진입: 페이드 + 슬라이드 */
+.page-enter {
+  animation: page-enter 0.24s ease-out;
+}
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* 버튼: 호버 1.05x, 클릭 0.95x */
+.btn-press {
+  transition:
+    transform 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+.btn-press:hover:not(:disabled) {
+  transform: scale(1.04);
+}
+.btn-press:active:not(:disabled) {
+  transform: scale(0.95);
+}
+.btn-press:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 키보드 포커스 링 (가이드 7.3) */
+:where(button, a, input, select, [tabindex]):focus-visible {
+  outline: 2px solid #e6c866;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter,
+  .btn-press,
+  .pet-idle,
+  .pet-walk,
+  .pet-attack,
+  .pet-hurt,
+  .pet-faint,
+  .pet-victory,
+  .animate-enter-left,
+  .animate-enter-right,
+  .animate-flash,
+  .battle-shake,
+  .particle-fly,
+  .particle-burst {
+    animation: none;
+  }
+  .btn-press:hover:not(:disabled),
+  .btn-press:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* 데미지 숫자 팝업 */
+.animate-pop {
+  animation: pop-up 0.9s ease-out forwards;
+}
+@keyframes pop-up {
+  0% {
+    transform: translate(-50%, 6px) scale(0.7);
+    opacity: 0;
+  }
+  25% {
+    transform: translate(-50%, -8px) scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -26px) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes float-up {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  90% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(-120px) scale(0.4);
+    opacity: 0;
+  }
+}

@@ -1,0 +1,166 @@
+[
+  {
+    "id": "elder",
+    "name": "촌장",
+    "mapId": "village",
+    "x": 10,
+    "y": 8,
+    "entry": ["report", "offer", "inProgress", "idle"],
+    "nodes": [
+      {
+        "id": "report",
+        "text": "돌아왔군. 얼굴이 좀 달라졌어.",
+        "condition": { "quest": { "id": "firstSteps", "state": "ready" } },
+        "choices": [
+          { "text": "다녀왔습니다.", "action": { "kind": "turnIn", "questId": "firstSteps" }, "next": "thanks" }
+        ]
+      },
+      {
+        "id": "offer",
+        "text": "젊은 사람이 마을에만 있어서야 쓰나. 남쪽 길로 나가면 초원일세.",
+        "condition": { "quest": { "id": "firstSteps", "state": "available" } },
+        "choices": [
+          { "text": "나가 보겠습니다.", "action": { "kind": "accept", "questId": "firstSteps" }, "next": "accepted" },
+          { "text": "나중에요.", "action": { "kind": "end" } }
+        ]
+      },
+      {
+        "id": "inProgress",
+        "text": "아직인가? 서두를 것 없네. 다만 살아서 돌아오게.",
+        "condition": { "quest": { "id": "firstSteps", "state": "active" } }
+      },
+      {
+        "id": "idle",
+        "text": "돌바람 마을은 조용한 곳일세. 밖은 그렇지 않지.",
+        "choices": [
+          {
+            "text": "밧줄 쓰는 법을 배우고 싶습니다.",
+            "condition": { "quest": { "id": "firstCatch", "state": "available" } },
+            "action": { "kind": "accept", "questId": "firstCatch" },
+            "next": "accepted"
+          },
+          {
+            "text": "동료를 데려왔습니다.",
+            "condition": { "quest": { "id": "firstCatch", "state": "ready" } },
+            "action": { "kind": "turnIn", "questId": "firstCatch" },
+            "next": "thanks"
+          },
+          {
+            "text": "굴 안쪽 이야기를 들었습니다.",
+            "condition": { "quest": { "id": "deepEcho", "state": "available" } },
+            "action": { "kind": "accept", "questId": "deepEcho" },
+            "next": "accepted"
+          },
+          {
+            "text": "굴에서 이런 걸 잡았습니다.",
+            "condition": { "quest": { "id": "deepEcho", "state": "ready" } },
+            "action": { "kind": "turnIn", "questId": "deepEcho" },
+            "next": "thanks"
+          },
+          { "text": "그럼 이만.", "action": { "kind": "end" } }
+        ]
+      },
+      { "id": "accepted", "text": "몸조심하게." },
+      { "id": "thanks", "text": "수고했네. 받아 두게." }
+    ]
+  },
+  {
+    "id": "hunter",
+    "name": "사냥꾼",
+    "mapId": "village",
+    "x": 17,
+    "y": 11,
+    "entry": ["idle"],
+    "nodes": [
+      {
+        "id": "idle",
+        "text": "필드는 매일 달라져. 어제 다닌 길이라고 오늘도 안전하진 않아.",
+        "choices": [
+          {
+            "text": "늪 쪽에 일이 있다고요?",
+            "condition": { "quest": { "id": "marshErrand", "state": "available" } },
+            "action": { "kind": "accept", "questId": "marshErrand" },
+            "next": "accepted"
+          },
+          {
+            "text": "늪은 정리했습니다.",
+            "condition": { "quest": { "id": "marshErrand", "state": "ready" } },
+            "action": { "kind": "turnIn", "questId": "marshErrand" },
+            "next": "thanks"
+          },
+          {
+            "text": "기슭 쪽은요?",
+            "condition": { "quest": { "id": "emberHunt", "state": "available" } },
+            "action": { "kind": "accept", "questId": "emberHunt" },
+            "next": "accepted"
+          },
+          {
+            "text": "불씨는 줄여 놨습니다.",
+            "condition": { "quest": { "id": "emberHunt", "state": "ready" } },
+            "action": { "kind": "turnIn", "questId": "emberHunt" },
+            "next": "thanks"
+          },
+          {
+            "text": "요령을 알려주세요.",
+            "next": "tip"
+          },
+          { "text": "가 보겠습니다.", "action": { "kind": "end" } }
+        ]
+      },
+      {
+        "id": "tip",
+        "text": "위험도 게이지를 봐. 꽉 차기 전에 길로 나오면 전투는 안 걸려. 무작정 풀숲을 가로지르는 놈들이 제일 먼저 죽지."
+      },
+      { "id": "accepted", "text": "무리하지 마. 도망치는 것도 실력이야." },
+      { "id": "thanks", "text": "말한 대로 해줬군. 받아." }
+    ]
+  },
+  {
+    "id": "shaman",
+    "name": "주술사",
+    "mapId": "village",
+    "x": 5,
+    "y": 9,
+    "entry": ["idle"],
+    "nodes": [
+      {
+        "id": "idle",
+        "text": "정령은 사람을 따르지 않는다. 물건에 깃들 뿐이지.",
+        "choices": [
+          {
+            "text": "깃든 물건을 구해 오겠습니다.",
+            "condition": { "quest": { "id": "spiritRite", "state": "available" } },
+            "action": { "kind": "accept", "questId": "spiritRite" },
+            "next": "accepted"
+          },
+          {
+            "text": "구해 왔습니다.",
+            "condition": { "quest": { "id": "spiritRite", "state": "ready" } },
+            "action": { "kind": "turnIn", "questId": "spiritRite" },
+            "next": "thanks"
+          },
+          {
+            "text": "타고난 것에 대해 묻고 싶습니다.",
+            "condition": { "quest": { "id": "boundOfGrowth", "state": "available" } },
+            "action": { "kind": "accept", "questId": "boundOfGrowth" },
+            "next": "accepted"
+          },
+          {
+            "text": "스무 레벨까지 키웠습니다.",
+            "condition": { "quest": { "id": "boundOfGrowth", "state": "ready" } },
+            "action": { "kind": "turnIn", "questId": "boundOfGrowth" },
+            "next": "thanks"
+          },
+          { "text": "성장률이란 게 뭡니까?", "next": "lore" },
+          { "text": "물러가겠습니다.", "action": { "kind": "end" } }
+        ]
+      },
+      {
+        "id": "lore",
+        "text": "같은 종이라도 그릇이 다르다. 레벨이 오를 때마다 그 그릇만큼 자라지. 넘을 수 없는 선이 있고, 그 선은 무엇으로도 살 수 없다. 돈으로 살 수 있는 건 다시 뽑을 기회뿐이야."
+      },
+      { "id": "accepted", "text": "가 보아라." },
+      { "id": "thanks", "text": "네가 쥔 것이 곧 네가 쓰는 것이다." }
+    ]
+  }
+]

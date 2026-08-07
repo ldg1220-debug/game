@@ -1,0 +1,300 @@
+{
+  "style": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature.",
+  "pets": [
+    {
+      "id": 1,
+      "name": "왕관토끼",
+      "file": "1.png",
+      "prompt": "small cute white rabbit with red eyes, wears a small gold crown",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Small cute white rabbit with red eyes, wears a small gold crown."
+    },
+    {
+      "id": 2,
+      "name": "구름여우",
+      "file": "2.png",
+      "prompt": "silver cloud fox, red eyes, white belly, multiple cloud tails",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Silver cloud fox, red eyes, white belly, multiple cloud tails."
+    },
+    {
+      "id": 3,
+      "name": "푸른뿔공룡",
+      "file": "3.png",
+      "prompt": "bipedal blue dinosaur with a vibrant orange spiky mohawk crest, snarling",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Bipedal blue dinosaur with a vibrant orange spiky mohawk crest, snarling."
+    },
+    {
+      "id": 4,
+      "name": "가시등거북",
+      "file": "4.png",
+      "prompt": "turtle-like beast, cream shell with large white conical spikes",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Turtle-like beast, cream shell with large white conical spikes."
+    },
+    {
+      "id": 5,
+      "name": "분홍하피",
+      "file": "5.png",
+      "prompt": "bipedal winged harpy chick, pink feathered body, cream wings",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Bipedal winged harpy chick, pink feathered body, cream wings."
+    },
+    {
+      "id": 6,
+      "name": "얼룩젖소",
+      "file": "6.png",
+      "prompt": "Holstein cow, black and white patches, small yellow horns, surprised eyes",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Holstein cow, black and white patches, small yellow horns, surprised eyes."
+    },
+    {
+      "id": 7,
+      "name": "노란테이퍼",
+      "file": "7.png",
+      "prompt": "yellow quadruped, elephant-tapir hybrid, large ears and short trunk",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Yellow quadruped, elephant-tapir hybrid, large ears and short trunk."
+    },
+    {
+      "id": 8,
+      "name": "백호새끼",
+      "file": "8.png",
+      "prompt": "small playful white tiger with black stripes, large fluffy mane",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Small playful white tiger with black stripes, large fluffy mane."
+    },
+    {
+      "id": 9,
+      "name": "잎날개공룡",
+      "file": "9.png",
+      "prompt": "orange bipedal dinosaur, yellow leaf-like plates along the back",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Orange bipedal dinosaur, yellow leaf-like plates along the back."
+    },
+    {
+      "id": 10,
+      "name": "잿빛박쥐말",
+      "file": "10.png",
+      "prompt": "grey winged pegasus-bat, feathered wings, tendril tail",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Grey winged pegasus-bat, feathered wings, tendril tail."
+    },
+    {
+      "id": 11,
+      "name": "분홍점사슴",
+      "file": "11.png",
+      "prompt": "winged deer, light pink body with blue spots, large white ears",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Winged deer, light pink body with blue spots, large white ears."
+    },
+    {
+      "id": 12,
+      "name": "늑대인간",
+      "file": "12.png",
+      "prompt": "snarling werewolf, hunched powerful pose, grey-black fur, long whiskers",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Snarling werewolf, hunched powerful pose, grey-black fur, long whiskers."
+    },
+    {
+      "id": 13,
+      "name": "불꽃펭귄",
+      "file": "13.png",
+      "prompt": "penguin-phoenix hybrid, blue upper body, flame plumage crest and tail",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Penguin-phoenix hybrid, blue upper body, flame plumage crest and tail."
+    },
+    {
+      "id": 14,
+      "name": "현무",
+      "file": "14.png",
+      "prompt": "Xuanwu, turtle-snake hybrid, teal segmented shell, long snake neck",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Xuanwu, turtle-snake hybrid, teal segmented shell, long snake neck."
+    },
+    {
+      "id": 15,
+      "name": "황갈뿔염소",
+      "file": "15.png",
+      "prompt": "tan goat-like creature, long curved horns, white beard, cloven hooves",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Tan goat-like creature, long curved horns, white beard, cloven hooves."
+    },
+    {
+      "id": 16,
+      "name": "붉은랩터",
+      "file": "16.png",
+      "prompt": "red raptor dinosaur, orange feather crest, yellow snout, feathered claws",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Red raptor dinosaur, orange feather crest, yellow snout, feathered claws."
+    },
+    {
+      "id": 17,
+      "name": "검치새치",
+      "file": "17.png",
+      "prompt": "blue swordfish creature, long nose, dorsal fin, yellow lateral stripes",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Blue swordfish creature, long nose, dorsal fin, yellow lateral stripes."
+    },
+    {
+      "id": 18,
+      "name": "뿔등거북",
+      "file": "18.png",
+      "prompt": "bulky green turtle, heavy dark grey shell, ivory curved horns, fangs",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Bulky green turtle, heavy dark grey shell, ivory curved horns, fangs."
+    },
+    {
+      "id": 19,
+      "name": "하늘비룡",
+      "file": "19.png",
+      "prompt": "light blue wyvern with wings and claws",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Light blue wyvern with wings and claws."
+    },
+    {
+      "id": 20,
+      "name": "금줄공룡",
+      "file": "20.png",
+      "prompt": "green theropod with vibrant yellow-gold stripe pattern, snarling",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Green theropod with vibrant yellow-gold stripe pattern, snarling."
+    },
+    {
+      "id": 21,
+      "name": "갈색불곰",
+      "file": "21.png",
+      "prompt": "brown grizzly bear, yellow muzzle, black claws",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Brown grizzly bear, yellow muzzle, black claws."
+    },
+    {
+      "id": 22,
+      "name": "파잎라마",
+      "file": "22.png",
+      "prompt": "llama with green fur, neck of stacked scallions, leek crest",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Llama with green fur, neck of stacked scallions, leek crest."
+    },
+    {
+      "id": 23,
+      "name": "긴혀장갑수",
+      "file": "23.png",
+      "prompt": "crouched blue quadruped, massive pink tongue extended, armor shell",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Crouched blue quadruped, massive pink tongue extended, armor shell."
+    },
+    {
+      "id": 24,
+      "name": "붉은돛악어",
+      "file": "24.png",
+      "prompt": "red sailfin crocodile dinosaur, large red sail, bared teeth",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Red sailfin crocodile dinosaur, large red sail, bared teeth."
+    },
+    {
+      "id": 25,
+      "name": "점박이치타",
+      "file": "25.png",
+      "prompt": "adorable cheetah, yellow with dark brown spots, sitting",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Adorable cheetah, yellow with dark brown spots, sitting."
+    },
+    {
+      "id": 26,
+      "name": "초록털야수",
+      "file": "26.png",
+      "prompt": "bulky ape-yeti covered in vibrant green fur, large curved gold horns",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Bulky ape-yeti covered in vibrant green fur, large curved gold horns."
+    },
+    {
+      "id": 27,
+      "name": "세뿔방패룡",
+      "file": "27.png",
+      "prompt": "quadrupedal triceratops, three white horns, large yellow frill",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Quadrupedal triceratops, three white horns, large yellow frill."
+    },
+    {
+      "id": 28,
+      "name": "엇뿔산양",
+      "file": "28.png",
+      "prompt": "horned stag-goat hybrid, orange scaled body, asymmetric curved horns",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Horned stag-goat hybrid, orange scaled body, asymmetric curved horns."
+    },
+    {
+      "id": 29,
+      "name": "빙판등짐승",
+      "file": "29.png",
+      "prompt": "crouched quadruped with massive shell of pale blue ice plates, white spikes",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Crouched quadruped with massive shell of pale blue ice plates, white spikes."
+    },
+    {
+      "id": 30,
+      "name": "악몽천마",
+      "file": "30.png",
+      "prompt": "dark nightmare pegasus, feathered dark wings, curved horn, glowing red eyes",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Dark nightmare pegasus, feathered dark wings, curved horn, glowing red eyes."
+    },
+    {
+      "id": 31,
+      "name": "황금털야수",
+      "file": "31.png",
+      "prompt": "bipedal beast with vibrant yellow fur, white chest, prominent white claws",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Bipedal beast with vibrant yellow fur, white chest, prominent white claws."
+    },
+    {
+      "id": 32,
+      "name": "백호",
+      "file": "32.png",
+      "prompt": "white tiger with black stripes, large mane and flowing tail fur",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. White tiger with black stripes, large mane and flowing tail fur."
+    },
+    {
+      "id": 33,
+      "name": "푸른가시멧돼지",
+      "file": "33.png",
+      "prompt": "spiky boar, deep red body, large conical blue spikes, small tusks",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Spiky boar, deep red body, large conical blue spikes, small tusks."
+    },
+    {
+      "id": 34,
+      "name": "별관랩터",
+      "file": "34.png",
+      "prompt": "slender bipedal grey dinosaur, black collar mane, jagged star-like crest",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Slender bipedal grey dinosaur, black collar mane, jagged star-like crest."
+    },
+    {
+      "id": 35,
+      "name": "얼룩화룡",
+      "file": "35.png",
+      "prompt": "winged dragon, orange-red scales with dark red spots, yellow eyes",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Winged dragon, orange-red scales with dark red spots, yellow eyes."
+    },
+    {
+      "id": 36,
+      "name": "봉황",
+      "file": "36.png",
+      "prompt": "majestic phoenix in full flight, fiery red-orange-yellow plumage",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Majestic phoenix in full flight, fiery red-orange-yellow plumage."
+    },
+    {
+      "id": 37,
+      "name": "여의주화룡",
+      "file": "37.png",
+      "prompt": "Eastern dragon standing, orange-red scales, long yellow tendrils, golden orb",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Eastern dragon standing, orange-red scales, long yellow tendrils, golden orb."
+    },
+    {
+      "id": 38,
+      "name": "북극곰",
+      "file": "38.png",
+      "prompt": "shaggy polar bear with cream-white fur, walking forward",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Shaggy polar bear with cream-white fur, walking forward."
+    },
+    {
+      "id": 39,
+      "name": "푸른매머드",
+      "file": "39.png",
+      "prompt": "shaggy blue mammoth, large white tusks, dark blue wig-like head fur",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Shaggy blue mammoth, large white tusks, dark blue wig-like head fur."
+    },
+    {
+      "id": 40,
+      "name": "기계비룡",
+      "file": "40.png",
+      "prompt": "bipedal cybernetic dragon, white mechanical parts with glowing blue lines",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Bipedal cybernetic dragon, white mechanical parts with glowing blue lines."
+    },
+    {
+      "id": 41,
+      "name": "서리비룡",
+      "file": "41.png",
+      "prompt": "ice dragon, light blue scales with white fur, wings of ice formations",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Ice dragon, light blue scales with white fur, wings of ice formations."
+    },
+    {
+      "id": 42,
+      "name": "청룡",
+      "file": "42.png",
+      "prompt": "light blue Eastern dragon, flowing white mane and whiskers, golden antlers, orb",
+      "fullPrompt": "Isometric pixel art sprite, high-resolution game sprite, detailed texture, clean edges. Isometric view (high-angle, three-quarter front). Pure white background with a dark, blocky, pixelated drop shadow directly beneath the creature. Light blue Eastern dragon, flowing white mane and whiskers, golden antlers, orb."
+    }
+  ],
+  "howto": "public/pets/ 에 {id}.png 를 넣으면 그 종이 이미지로 표시됩니다. 없는 종은 절차적 렌더링으로 자동 대체되므로 한 장씩 넣어도 됩니다. 권장 256x256 PNG."
+}

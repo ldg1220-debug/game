@@ -1,0 +1,521 @@
+[
+  {
+    "id": "gaiaGrasp",
+    "name": "대지의손아귀",
+    "element": "earth",
+    "target": "oneEnemy",
+    "effect": {
+      "kind": "damage"
+    },
+    "levels": [
+      {
+        "cost": 8,
+        "successRate": 0.55,
+        "duration": 2,
+        "power": 0.9
+      },
+      {
+        "cost": 11,
+        "successRate": 0.62,
+        "duration": 3,
+        "power": 1.13
+      },
+      {
+        "cost": 14,
+        "successRate": 0.69,
+        "duration": 4,
+        "power": 1.35
+      },
+      {
+        "cost": 17,
+        "successRate": 0.76,
+        "duration": 5,
+        "power": 1.58
+      },
+      {
+        "cost": 20,
+        "successRate": 0.83,
+        "duration": 6,
+        "power": 1.8
+      }
+    ],
+    "description": "대지가 적을 붙든다."
+  },
+  {
+    "id": "stoneSkin",
+    "name": "석화피부",
+    "element": "earth",
+    "target": "oneAlly",
+    "effect": {
+      "kind": "buff",
+      "modifiers": {
+        "def": 1.3
+      }
+    },
+    "levels": [
+      {
+        "cost": 7,
+        "successRate": 0.65,
+        "duration": 2,
+        "power": 0
+      },
+      {
+        "cost": 9,
+        "successRate": 0.72,
+        "duration": 3,
+        "power": 0
+      },
+      {
+        "cost": 11,
+        "successRate": 0.79,
+        "duration": 4,
+        "power": 0
+      },
+      {
+        "cost": 13,
+        "successRate": 0.86,
+        "duration": 5,
+        "power": 0
+      },
+      {
+        "cost": 15,
+        "successRate": 0.93,
+        "duration": 6,
+        "power": 0
+      }
+    ],
+    "description": "피부를 돌처럼 굳힌다."
+  },
+  {
+    "id": "tideCall",
+    "name": "조수부름",
+    "element": "water",
+    "target": "allEnemies",
+    "effect": {
+      "kind": "damage"
+    },
+    "levels": [
+      {
+        "cost": 12,
+        "successRate": 0.5,
+        "duration": 2,
+        "power": 0.8
+      },
+      {
+        "cost": 16,
+        "successRate": 0.57,
+        "duration": 3,
+        "power": 1
+      },
+      {
+        "cost": 20,
+        "successRate": 0.64,
+        "duration": 4,
+        "power": 1.2
+      },
+      {
+        "cost": 24,
+        "successRate": 0.71,
+        "duration": 5,
+        "power": 1.4
+      },
+      {
+        "cost": 28,
+        "successRate": 0.78,
+        "duration": 6,
+        "power": 1.6
+      }
+    ],
+    "description": "조수를 불러 적 전체를 친다."
+  },
+  {
+    "id": "healingSpring",
+    "name": "치유의샘",
+    "element": "water",
+    "target": "allAllies",
+    "effect": {
+      "kind": "heal"
+    },
+    "levels": [
+      {
+        "cost": 11,
+        "successRate": 0.7,
+        "duration": 1,
+        "power": 0.25
+      },
+      {
+        "cost": 15,
+        "successRate": 0.77,
+        "duration": 2,
+        "power": 0.31
+      },
+      {
+        "cost": 19,
+        "successRate": 0.84,
+        "duration": 3,
+        "power": 0.38
+      },
+      {
+        "cost": 23,
+        "successRate": 0.91,
+        "duration": 4,
+        "power": 0.44
+      },
+      {
+        "cost": 27,
+        "successRate": 0.95,
+        "duration": 5,
+        "power": 0.5
+      }
+    ],
+    "description": "샘물이 아군을 적신다."
+  },
+  {
+    "id": "emberBrand",
+    "name": "불씨낙인",
+    "element": "fire",
+    "target": "oneEnemy",
+    "effect": {
+      "kind": "ailment",
+      "ailment": "poison"
+    },
+    "levels": [
+      {
+        "cost": 8,
+        "successRate": 0.58,
+        "duration": 3,
+        "power": 1
+      },
+      {
+        "cost": 11,
+        "successRate": 0.65,
+        "duration": 4,
+        "power": 1.25
+      },
+      {
+        "cost": 14,
+        "successRate": 0.72,
+        "duration": 5,
+        "power": 1.5
+      },
+      {
+        "cost": 17,
+        "successRate": 0.79,
+        "duration": 6,
+        "power": 1.75
+      },
+      {
+        "cost": 20,
+        "successRate": 0.86,
+        "duration": 7,
+        "power": 2
+      }
+    ],
+    "description": "낙인이 남아 지속 피해를 준다."
+  },
+  {
+    "id": "forgeHeart",
+    "name": "단조의심장",
+    "element": "fire",
+    "target": "oneAlly",
+    "effect": {
+      "kind": "buff",
+      "modifiers": {
+        "atk": 1.25
+      }
+    },
+    "levels": [
+      {
+        "cost": 9,
+        "successRate": 0.62,
+        "duration": 2,
+        "power": 0
+      },
+      {
+        "cost": 12,
+        "successRate": 0.69,
+        "duration": 3,
+        "power": 0
+      },
+      {
+        "cost": 15,
+        "successRate": 0.76,
+        "duration": 4,
+        "power": 0
+      },
+      {
+        "cost": 18,
+        "successRate": 0.83,
+        "duration": 5,
+        "power": 0
+      },
+      {
+        "cost": 21,
+        "successRate": 0.9,
+        "duration": 6,
+        "power": 0
+      }
+    ],
+    "description": "공격력을 끌어올린다."
+  },
+  {
+    "id": "zephyrStep",
+    "name": "산들바람걸음",
+    "element": "wind",
+    "target": "oneAlly",
+    "effect": {
+      "kind": "buff",
+      "modifiers": {
+        "spd": 1.3
+      }
+    },
+    "levels": [
+      {
+        "cost": 7,
+        "successRate": 0.68,
+        "duration": 2,
+        "power": 0
+      },
+      {
+        "cost": 9,
+        "successRate": 0.75,
+        "duration": 3,
+        "power": 0
+      },
+      {
+        "cost": 11,
+        "successRate": 0.82,
+        "duration": 4,
+        "power": 0
+      },
+      {
+        "cost": 13,
+        "successRate": 0.89,
+        "duration": 5,
+        "power": 0
+      },
+      {
+        "cost": 15,
+        "successRate": 0.95,
+        "duration": 6,
+        "power": 0
+      }
+    ],
+    "description": "순발력을 올린다."
+  },
+  {
+    "id": "tempestEye",
+    "name": "폭풍의눈",
+    "element": "wind",
+    "target": "allEnemies",
+    "effect": {
+      "kind": "damage"
+    },
+    "levels": [
+      {
+        "cost": 13,
+        "successRate": 0.48,
+        "duration": 2,
+        "power": 0.85
+      },
+      {
+        "cost": 18,
+        "successRate": 0.55,
+        "duration": 3,
+        "power": 1.06
+      },
+      {
+        "cost": 23,
+        "successRate": 0.62,
+        "duration": 4,
+        "power": 1.27
+      },
+      {
+        "cost": 28,
+        "successRate": 0.69,
+        "duration": 5,
+        "power": 1.49
+      },
+      {
+        "cost": 33,
+        "successRate": 0.76,
+        "duration": 6,
+        "power": 1.7
+      }
+    ],
+    "description": "폭풍이 적진을 훑는다."
+  },
+  {
+    "id": "slumberVeil",
+    "name": "잠의장막",
+    "element": null,
+    "target": "oneEnemy",
+    "effect": {
+      "kind": "ailment",
+      "ailment": "sleep"
+    },
+    "levels": [
+      {
+        "cost": 9,
+        "successRate": 0.45,
+        "duration": 2,
+        "power": 0
+      },
+      {
+        "cost": 12,
+        "successRate": 0.52,
+        "duration": 3,
+        "power": 0
+      },
+      {
+        "cost": 15,
+        "successRate": 0.59,
+        "duration": 4,
+        "power": 0
+      },
+      {
+        "cost": 18,
+        "successRate": 0.66,
+        "duration": 5,
+        "power": 0
+      },
+      {
+        "cost": 21,
+        "successRate": 0.73,
+        "duration": 6,
+        "power": 0
+      }
+    ],
+    "description": "대상을 재운다."
+  },
+  {
+    "id": "venomSeep",
+    "name": "독기스밈",
+    "element": null,
+    "target": "oneEnemy",
+    "effect": {
+      "kind": "ailment",
+      "ailment": "poison"
+    },
+    "levels": [
+      {
+        "cost": 8,
+        "successRate": 0.52,
+        "duration": 3,
+        "power": 0
+      },
+      {
+        "cost": 11,
+        "successRate": 0.59,
+        "duration": 4,
+        "power": 0
+      },
+      {
+        "cost": 14,
+        "successRate": 0.66,
+        "duration": 5,
+        "power": 0
+      },
+      {
+        "cost": 17,
+        "successRate": 0.73,
+        "duration": 6,
+        "power": 0
+      },
+      {
+        "cost": 20,
+        "successRate": 0.8,
+        "duration": 7,
+        "power": 0
+      }
+    ],
+    "description": "독이 서서히 퍼진다."
+  },
+  {
+    "id": "wardLight",
+    "name": "수호의빛",
+    "element": null,
+    "target": "allAllies",
+    "effect": {
+      "kind": "buff",
+      "modifiers": {
+        "def": 1.2
+      }
+    },
+    "levels": [
+      {
+        "cost": 14,
+        "successRate": 0.6,
+        "duration": 2,
+        "power": 0
+      },
+      {
+        "cost": 19,
+        "successRate": 0.67,
+        "duration": 3,
+        "power": 0
+      },
+      {
+        "cost": 24,
+        "successRate": 0.74,
+        "duration": 4,
+        "power": 0
+      },
+      {
+        "cost": 29,
+        "successRate": 0.81,
+        "duration": 5,
+        "power": 0
+      },
+      {
+        "cost": 34,
+        "successRate": 0.88,
+        "duration": 6,
+        "power": 0
+      }
+    ],
+    "description": "아군 전체의 방어를 올린다."
+  },
+  {
+    "id": "soulTether",
+    "name": "혼줄",
+    "element": null,
+    "target": "oneAlly",
+    "effect": {
+      "kind": "loyaltyGuard"
+    },
+    "levels": [
+      {
+        "cost": 10,
+        "successRate": 0.55,
+        "duration": 1,
+        "power": 0
+      },
+      {
+        "cost": 14,
+        "successRate": 0.62,
+        "duration": 2,
+        "power": 0
+      },
+      {
+        "cost": 18,
+        "successRate": 0.69,
+        "duration": 3,
+        "power": 0
+      },
+      {
+        "cost": 22,
+        "successRate": 0.76,
+        "duration": 4,
+        "power": 0
+      },
+      {
+        "cost": 26,
+        "successRate": 0.83,
+        "duration": 5,
+        "power": 0
+      }
+    ],
+    "description": "충성도 하락을 잠시 막는다."
+  }
+]

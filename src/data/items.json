@@ -1,0 +1,179 @@
+[
+  {
+    "id": "herbSmall",
+    "name": "약초",
+    "kind": "heal",
+    "price": 60,
+    "weight": 0.2,
+    "heal": 60,
+    "description": "체력을 조금 회복한다."
+  },
+  {
+    "id": "herbLarge",
+    "name": "상급 약초",
+    "kind": "heal",
+    "price": 220,
+    "weight": 0.3,
+    "heal": 220,
+    "description": "체력을 크게 회복한다."
+  },
+  {
+    "id": "antidote",
+    "name": "해독제",
+    "kind": "heal",
+    "price": 90,
+    "weight": 0.2,
+    "heal": 0,
+    "description": "독을 해제한다."
+  },
+  {
+    "id": "ropeCrude",
+    "name": "거친 밧줄",
+    "kind": "captureTool",
+    "price": 120,
+    "weight": 0.5,
+    "captureMultiplier": 1,
+    "description": "기본 포획 도구."
+  },
+  {
+    "id": "ropeFine",
+    "name": "질긴 밧줄",
+    "kind": "captureTool",
+    "price": 400,
+    "weight": 0.5,
+    "captureMultiplier": 1.35,
+    "description": "포획률이 오른다."
+  },
+  {
+    "id": "ropeMaster",
+    "name": "명인의 밧줄",
+    "kind": "captureTool",
+    "price": 1500,
+    "weight": 0.6,
+    "captureMultiplier": 1.8,
+    "description": "포획률이 크게 오른다."
+  },
+  {
+    "id": "evolveStone",
+    "name": "진화의 돌",
+    "kind": "evolution",
+    "price": 5000,
+    "weight": 1,
+    "description": "조건을 갖춘 펫을 진화시킨다. 성장률이 재추첨된다."
+  },
+  {
+    "id": "catalyst",
+    "name": "촉진제",
+    "kind": "evolution",
+    "price": 8000,
+    "weight": 1,
+    "description": "이전 성장률을 일부 물려주며 진화시킨다."
+  },
+  {
+    "id": "rerollDraught",
+    "name": "재추첨의 물약",
+    "kind": "evolution",
+    "price": 3000,
+    "weight": 0.4,
+    "description": "성장률을 다시 추첨한다. 상한은 오르지 않는다."
+  },
+  {
+    "id": "meatChunk",
+    "name": "고기 덩이",
+    "kind": "food",
+    "price": 80,
+    "weight": 0.4,
+    "loyalty": 8,
+    "description": "충성도를 회복한다."
+  },
+  {
+    "id": "honeyJar",
+    "name": "꿀단지",
+    "kind": "food",
+    "price": 260,
+    "weight": 0.5,
+    "loyalty": 22,
+    "description": "충성도를 크게 회복한다."
+  },
+  {
+    "id": "clubStone",
+    "name": "돌몽둥이",
+    "kind": "equipment",
+    "price": 300,
+    "weight": 3,
+    "slot": "weapon",
+    "bonus": {
+      "atk": 6
+    },
+    "description": "기본 무기."
+  },
+  {
+    "id": "spearBone",
+    "name": "뼈창",
+    "kind": "equipment",
+    "price": 900,
+    "weight": 2.6,
+    "slot": "weapon",
+    "bonus": {
+      "atk": 12,
+      "spd": 2
+    },
+    "spiritId": "emberBrand",
+    "description": "불씨낙인이 깃든 창."
+  },
+  {
+    "id": "hideArmor",
+    "name": "가죽 갑옷",
+    "kind": "equipment",
+    "price": 350,
+    "weight": 4,
+    "slot": "armor",
+    "bonus": {
+      "def": 7,
+      "hp": 20
+    },
+    "description": "기본 방어구."
+  },
+  {
+    "id": "shellPlate",
+    "name": "등딱지 갑옷",
+    "kind": "equipment",
+    "price": 1100,
+    "weight": 6,
+    "slot": "armor",
+    "bonus": {
+      "def": 15,
+      "hp": 60,
+      "spd": -2
+    },
+    "spiritId": "stoneSkin",
+    "description": "석화피부가 깃든 갑옷."
+  },
+  {
+    "id": "featherCharm",
+    "name": "깃털 부적",
+    "kind": "equipment",
+    "price": 700,
+    "weight": 0.3,
+    "slot": "accessory",
+    "bonus": {
+      "spd": 6
+    },
+    "spiritId": "zephyrStep",
+    "description": "산들바람걸음이 깃든 부적."
+  },
+  {
+    "id": "tideAmulet",
+    "name": "물결 목걸이",
+    "kind": "equipment",
+    "price": 1200,
+    "weight": 0.4,
+    "slot": "accessory",
+    "bonus": {
+      "hp": 40,
+      "def": 4
+    },
+    "spiritId": "healingSpring",
+    "description": "치유의샘이 깃든 목걸이."
+  }
+]

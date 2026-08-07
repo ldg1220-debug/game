@@ -1,0 +1,53 @@
+{
+  "currency": {
+    "name": "스톤",
+    "starting": 900,
+    "perEnemyLevel": 6
+  },
+  "inventory": {
+    "maxSlots": 20,
+    "maxWeight": 40,
+    "maxStack": 99
+  },
+  "trade": {
+    "sellRatio": 0.5
+  },
+  "shops": [
+    {
+      "id": "villageStore",
+      "name": "돌바람 잡화점",
+      "mapId": "village",
+      "x": 5,
+      "y": 4,
+      "greeting": "필요한 건 다 있소. 잡은 놈들은 여기서 못 팔지만.",
+      "stock": [
+        "herbSmall",
+        "herbLarge",
+        "antidote",
+        "ropeCrude",
+        "ropeFine",
+        "meatChunk",
+        "honeyJar",
+        "clubStone",
+        "hideArmor"
+      ]
+    },
+    {
+      "id": "villageSmith",
+      "name": "뼈와 돌 대장간",
+      "mapId": "village",
+      "x": 15,
+      "y": 4,
+      "greeting": "정령이 깃든 물건은 값을 하지.",
+      "stock": [
+        "clubStone",
+        "spearBone",
+        "hideArmor",
+        "shellPlate",
+        "featherCharm",
+        "tideAmulet",
+        "ropeMaster"
+      ]
+    }
+  ]
+}
