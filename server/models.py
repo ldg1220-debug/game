@@ -32,6 +32,40 @@ def _created_at() -> object:
     )
 
 
+class Account(SQLModel, table=True):
+    """계정.
+
+    비밀번호는 계정마다 다른 소금을 붙여 scrypt로 늘려 저장한다. 소금이 없으면
+    같은 비밀번호가 같은 해시로 저장되고, 표 하나가 새면 전부 한꺼번에 뚫린다.
+    """
+
+    __tablename__ = "accounts"
+
+    id: int | None = SQLField(default=None, primary_key=True)
+    player_id: str = SQLField(index=True, unique=True)
+    #  16진 문자열로 보관한다. bytes를 그대로 넣으면 DB마다 취급이 갈린다.
+    salt: str
+    password_hash: str
+    created_at: datetime = _created_at()  # type: ignore[assignment]
+
+
+class AuthToken(SQLModel, table=True):
+    """발급된 토큰.
+
+    서명 토큰(JWT)이 아니라 DB에 보관하는 난수다. 서명 토큰은 서버가 상태를
+    안 가져도 되는 대신 **즉시 무효화를 잃는다** — 계정을 도난당했을 때
+    "다음 만료까지 기다리세요"는 답이 아니다.
+    """
+
+    __tablename__ = "auth_tokens"
+
+    id: int | None = SQLField(default=None, primary_key=True)
+    token: str = SQLField(index=True, unique=True)
+    player_id: str = SQLField(index=True)
+    expires_at: datetime = SQLField(sa_column=Column(DateTime(timezone=True), nullable=False))
+    created_at: datetime = _created_at()  # type: ignore[assignment]
+
+
 class SaveRecord(SQLModel, table=True):
     """세이브 한 세대.
 

@@ -10,6 +10,10 @@ TypeScript로 한 벌 있고, 클라이언트와 판정 서비스가 **같은 �
 한 번 더 구현하면 둘은 반드시 어긋나고, 어긋난 날 어느 쪽이 맞는지 판정할 방법이
 없다. 밸런스 수치 하나 고칠 때마다 두 곳을 고쳐야 하는 것도 시간문제다.
 
+**누가 보냈는지는 토큰이 정한다.** `player_id`를 본문이나 경로에서 받아 그대로
+믿으면, 검증을 아무리 촘촘히 해도 남의 id를 적어 남의 대전을 성립시킬 수 있다.
+그래서 행위자는 언제나 토큰에서 나오고, 본문의 id는 "누구를 상대로"에만 쓴다.
+
 세이브 내용을 서버가 해석하지 않는 원칙도 그대로다. `payload`는 통짜 JSON으로
 들어오고 그대로 나간다. 버전과 마이그레이션은 클라이언트(src/game/save.ts) 한
 곳에만 둔다. 대전할 때만 판정 서비스가 그 내용을 열어 본다 — 규칙을 아는 쪽은
@@ -31,6 +35,7 @@ from pydantic import BaseModel, Field
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from server.arbiter import Arbiter, ArbiterError, get_arbiter
+from server.auth import Credentials, TokenOut, bearer, login, make_current_player, register, resolve_token, revoke
 from server.hub import Hub, get_hub
 from server.models import (
     DuelRecord,
@@ -72,13 +77,20 @@ def get_session():
         yield session
 
 
+#  토큰 → player_id. 이 의존성을 단 엔드포인트는 행위자를 본문에서 받지 않는다.
+current_player = make_current_player(get_session)
+
+
 # ─────────────── 응답 모형 ───────────────
 
 
 class SaveIn(BaseModel):
-    """저장 요청."""
+    """저장 요청.
 
-    player_id: str = Field(min_length=1, max_length=64)
+    `player_id`가 없다. 누구의 세이브인지는 토큰이 정한다 — 본문에서 받으면
+    남의 슬롯에 덮어쓸 수 있다.
+    """
+
     slot: str = Field(default="main", min_length=1, max_length=32)
     version: int = Field(ge=1)
     payload: dict[str, Any]
@@ -112,12 +124,6 @@ class Health(BaseModel):
     version: str
 
 
-class ActorIn(BaseModel):
-    """행위자만 필요한 요청. 거래·길드가 함께 쓴다."""
-
-    player_id: str = Field(min_length=1, max_length=64)
-
-
 # ─────────────── 기본 ───────────────
 
 
@@ -127,18 +133,50 @@ def health() -> Health:
     return Health(status="ok", version=app.version)
 
 
+# ─────────────── 인증 ───────────────
+
+
+@app.post("/auth/register", response_model=TokenOut, status_code=201)
+def auth_register(body: Credentials, session: Session = Depends(get_session)) -> TokenOut:
+    t = register(session, body)
+    return TokenOut(token=t.token, player_id=t.player_id, expires_at=t.expires_at)
+
+
+@app.post("/auth/login", response_model=TokenOut)
+def auth_login(body: Credentials, session: Session = Depends(get_session)) -> TokenOut:
+    t = login(session, body)
+    return TokenOut(token=t.token, player_id=t.player_id, expires_at=t.expires_at)
+
+
+@app.post("/auth/logout", status_code=204)
+def auth_logout(
+    token: str = Depends(bearer), session: Session = Depends(get_session)
+) -> None:
+    """토큰을 즉시 무효화한다. 서명 토큰이 아니라 DB 행이라서 가능한 일이다."""
+    revoke(session, token)
+
+
+@app.get("/auth/me")
+def auth_me(me: str = Depends(current_player)) -> dict[str, str]:
+    return {"player_id": me}
+
+
 # ─────────────── 세이브 ───────────────
 
 
 @app.post("/saves", response_model=SaveOut, status_code=201)
-def create_save(body: SaveIn, session: Session = Depends(get_session)) -> SaveOut:
+def create_save(
+    body: SaveIn,
+    me: str = Depends(current_player),
+    session: Session = Depends(get_session),
+) -> SaveOut:
     """세이브를 한 세대 남긴다."""
     text = json.dumps(body.payload, ensure_ascii=False, separators=(",", ":"))
     if len(text.encode("utf-8")) > MAX_PAYLOAD_BYTES:
         raise HTTPException(status_code=413, detail="세이브가 너무 크다")
 
     record = SaveRecord(
-        player_id=body.player_id,
+        player_id=me,
         slot=body.slot,
         version=body.version,
         payload=text,
@@ -150,7 +188,7 @@ def create_save(body: SaveIn, session: Session = Depends(get_session)) -> SaveOu
     # 오래된 세대 정리. 무한히 쌓이면 목록도 저장소도 못 쓰게 된다.
     old = session.exec(
         select(SaveRecord)
-        .where(SaveRecord.player_id == body.player_id, SaveRecord.slot == body.slot)
+        .where(SaveRecord.player_id == me, SaveRecord.slot == body.slot)
         .order_by(SaveRecord.id.desc())  # type: ignore[union-attr]
         .offset(MAX_HISTORY)
     ).all()
@@ -169,12 +207,18 @@ def create_save(body: SaveIn, session: Session = Depends(get_session)) -> SaveOu
     )
 
 
-@app.get("/saves/{player_id}", response_model=list[SaveSummary])
-def list_saves(player_id: str, session: Session = Depends(get_session)) -> list[SaveSummary]:
-    """그 플레이어의 세이브 목록. 최신 순."""
+@app.get("/saves", response_model=list[SaveSummary])
+def list_saves(
+    me: str = Depends(current_player), session: Session = Depends(get_session)
+) -> list[SaveSummary]:
+    """내 세이브 목록. 최신 순.
+
+    경로에서 player_id를 받지 않는다. 받으면 남의 세이브 목록을 볼 수 있고,
+    목록만 봐도 언제 접속했는지가 드러난다.
+    """
     rows = session.exec(
         select(SaveRecord)
-        .where(SaveRecord.player_id == player_id)
+        .where(SaveRecord.player_id == me)
         .order_by(SaveRecord.id.desc())  # type: ignore[union-attr]
     ).all()
     return [
@@ -189,12 +233,14 @@ def list_saves(player_id: str, session: Session = Depends(get_session)) -> list[
     ]
 
 
-@app.get("/saves/{player_id}/latest", response_model=SaveOut)
+@app.get("/saves/latest", response_model=SaveOut)
 def latest_save(
-    player_id: str, slot: str = "main", session: Session = Depends(get_session)
+    slot: str = "main",
+    me: str = Depends(current_player),
+    session: Session = Depends(get_session),
 ) -> SaveOut:
-    """그 슬롯의 가장 최근 세이브."""
-    row = _latest_save_row(session, player_id, slot)
+    """내 그 슬롯의 가장 최근 세이브."""
+    row = _latest_save_row(session, me, slot)
     if row is None:
         raise HTTPException(status_code=404, detail="세이브가 없다")
     return SaveOut(
@@ -221,15 +267,18 @@ def _latest_save_row(session: Session, player_id: str, slot: str = "main") -> Sa
 class DuelIn(BaseModel):
     """대전 요청.
 
-    세이브도 결과도 클라이언트가 보내지 않는다. 플레이어 id와 태세만 받고,
-    나머지는 서버가 저장된 세이브에서 꺼낸다. 세이브를 요청에 담게 하면 그
-    순간 "지금 그 사람의 상태"가 아니라 "그가 주장하는 상태"가 된다.
+    세이브도 결과도 클라이언트가 보내지 않는다. 상대와 태세만 받고 나머지는
+    서버가 저장된 세이브에서 꺼낸다. 세이브를 요청에 담게 하면 그 순간 "지금
+    그 사람의 상태"가 아니라 "그가 주장하는 상태"가 된다.
+
+    **도전자는 본문에 없다.** 토큰이 정한다 — 예전엔 player_a를 받았고, 그래서
+    아무나 남의 이름으로 남의 대전을 성립시킬 수 있었다.
     """
 
-    player_a: str = Field(min_length=1, max_length=64)
-    player_b: str = Field(min_length=1, max_length=64)
-    stance_a: str = Field(min_length=1, max_length=16)
-    stance_b: str = Field(min_length=1, max_length=16)
+    opponent: str = Field(min_length=1, max_length=64)
+    stance: str = Field(min_length=1, max_length=16)
+    #  상대 태세. 도전 수락 흐름이 생기기 전까지는 도전자가 지정한다.
+    opponent_stance: str = Field(min_length=1, max_length=16)
 
 
 class DuelOut(BaseModel):
@@ -270,6 +319,7 @@ def _duel_out(record: DuelRecord) -> DuelOut:
 @app.post("/duels", response_model=DuelOut, status_code=201)
 async def create_duel(
     body: DuelIn,
+    me: str = Depends(current_player),
     session: Session = Depends(get_session),
     arbiter: Arbiter = Depends(get_arbiter),
     hub: Hub = Depends(get_hub),
@@ -280,11 +330,11 @@ async def create_duel(
     때까지 미리 돌려보고 그때 요청을 보낼 수 있다 — 결정론 엔진에서 그건
     곧 결과 조작이다.
     """
-    if body.player_a == body.player_b:
+    if me == body.opponent:
         raise HTTPException(status_code=400, detail="자기 자신과는 대전할 수 없다")
 
     saves: dict[str, Any] = {}
-    for pid in (body.player_a, body.player_b):
+    for pid in (me, body.opponent):
         row = _latest_save_row(session, pid)
         if row is None:
             raise HTTPException(status_code=404, detail=f"{pid}의 세이브가 없다")
@@ -293,8 +343,8 @@ async def create_duel(
     seed = secrets.randbits(30)
     payload = {
         "seed": seed,
-        "a": {"playerId": body.player_a, "stance": body.stance_a, "save": saves[body.player_a]},
-        "b": {"playerId": body.player_b, "stance": body.stance_b, "save": saves[body.player_b]},
+        "a": {"playerId": me, "stance": body.stance, "save": saves[me]},
+        "b": {"playerId": body.opponent, "stance": body.opponent_stance, "save": saves[body.opponent]},
     }
 
     try:
@@ -310,10 +360,10 @@ async def create_duel(
         raise HTTPException(status_code=502, detail="판정 서비스가 알 수 없는 답을 보냈다")
 
     record = DuelRecord(
-        player_a=body.player_a,
-        player_b=body.player_b,
-        stance_a=body.stance_a,
-        stance_b=body.stance_b,
+        player_a=me,
+        player_b=body.opponent,
+        stance_a=body.stance,
+        stance_b=body.opponent_stance,
         seed=result["seed"],
         winner=result["winner"],
         ended_by=result["endedBy"],
@@ -327,27 +377,37 @@ async def create_duel(
     session.refresh(record)
 
     await hub.notify(
-        [body.player_a, body.player_b],
+        [me, body.opponent],
         {"type": "duelFinished", "duelId": record.id, "winner": record.winner},
     )
     return _duel_out(record)
 
 
 @app.get("/duels/{duel_id}", response_model=DuelOut)
-def get_duel(duel_id: int, session: Session = Depends(get_session)) -> DuelOut:
+def get_duel(
+    duel_id: int,
+    me: str = Depends(current_player),
+    session: Session = Depends(get_session),
+) -> DuelOut:
     """지난 대전을 다시 본다. seed와 로그가 함께 남아 있어 재현할 수 있다."""
     record = session.get(DuelRecord, duel_id)
     if record is None:
         raise HTTPException(status_code=404, detail="그런 대전이 없다")
+    if me not in (record.player_a, record.player_b):
+        #  로그에는 상대 명부와 능력치가 들어 있다. 남의 판을 열람하면 상대
+        #  전력을 미리 볼 수 있다.
+        raise HTTPException(status_code=403, detail="이 대전의 당사자가 아니다")
     return _duel_out(record)
 
 
-@app.get("/players/{player_id}/duels", response_model=list[DuelSummary])
-def list_duels(player_id: str, session: Session = Depends(get_session)) -> list[DuelSummary]:
-    """그 사람의 대전 기록. 최신 순."""
+@app.get("/duels", response_model=list[DuelSummary])
+def list_duels(
+    me: str = Depends(current_player), session: Session = Depends(get_session)
+) -> list[DuelSummary]:
+    """내 대전 기록. 최신 순."""
     rows = session.exec(
         select(DuelRecord)
-        .where((DuelRecord.player_a == player_id) | (DuelRecord.player_b == player_id))
+        .where((DuelRecord.player_a == me) | (DuelRecord.player_b == me))
         .order_by(DuelRecord.id.desc())  # type: ignore[union-attr]
     ).all()
     return [
@@ -372,12 +432,12 @@ class OfferItem(BaseModel):
 
 
 class TradeCreate(BaseModel):
-    player_a: str = Field(min_length=1, max_length=64)
-    player_b: str = Field(min_length=1, max_length=64)
+    """거래를 연다. 제안자는 토큰이 정하므로 상대만 받는다."""
+
+    partner: str = Field(min_length=1, max_length=64)
 
 
 class OfferIn(BaseModel):
-    player_id: str = Field(min_length=1, max_length=64)
     items: list[OfferItem] = Field(default_factory=list)
     stones: int = Field(default=0, ge=0)
 
@@ -465,30 +525,49 @@ def _load_trade(session: Session, trade_id: int, actor: str) -> Trade:
 
 
 @app.post("/trades", response_model=TradeOut, status_code=201)
-def create_trade(body: TradeCreate, session: Session = Depends(get_session)) -> TradeOut:
+def create_trade(
+    body: TradeCreate,
+    me: str = Depends(current_player),
+    session: Session = Depends(get_session),
+) -> TradeOut:
     """거래를 연다."""
-    if body.player_a == body.player_b:
+    if me == body.partner:
         raise HTTPException(status_code=400, detail="자기 자신과는 거래할 수 없다")
-    t = Trade(player_a=body.player_a, player_b=body.player_b)
+    t = Trade(player_a=me, player_b=body.partner)
     session.add(t)
     session.commit()
     session.refresh(t)
-    _audit(session, t, body.player_a, "created")
+    _audit(session, t, me, "created")
     session.commit()
     return _trade_out(t)
 
 
 @app.get("/trades/{trade_id}", response_model=TradeOut)
-def get_trade(trade_id: int, session: Session = Depends(get_session)) -> TradeOut:
+def get_trade(
+    trade_id: int,
+    me: str = Depends(current_player),
+    session: Session = Depends(get_session),
+) -> TradeOut:
     t = session.get(Trade, trade_id)
     if t is None:
         raise HTTPException(status_code=404, detail="그런 거래가 없다")
+    if me not in (t.player_a, t.player_b):
+        raise HTTPException(status_code=403, detail="이 거래의 당사자가 아니다")
     return _trade_out(t)
 
 
 @app.get("/trades/{trade_id}/events", response_model=list[TradeEventOut])
-def trade_events(trade_id: int, session: Session = Depends(get_session)) -> list[TradeEventOut]:
+def trade_events(
+    trade_id: int,
+    me: str = Depends(current_player),
+    session: Session = Depends(get_session),
+) -> list[TradeEventOut]:
     """감사 로그. 끝난 거래도 그대로 남아 있다."""
+    t = session.get(Trade, trade_id)
+    if t is None:
+        raise HTTPException(status_code=404, detail="그런 거래가 없다")
+    if me not in (t.player_a, t.player_b):
+        raise HTTPException(status_code=403, detail="이 거래의 당사자가 아니다")
     rows = session.exec(
         select(TradeEvent).where(TradeEvent.trade_id == trade_id).order_by(TradeEvent.id)  # type: ignore[arg-type]
     ).all()
@@ -508,6 +587,7 @@ def trade_events(trade_id: int, session: Session = Depends(get_session)) -> list
 async def set_offer(
     trade_id: int,
     body: OfferIn,
+    me: str = Depends(current_player),
     session: Session = Depends(get_session),
     hub: Hub = Depends(get_hub),
 ) -> TradeOut:
@@ -517,12 +597,12 @@ async def set_offer(
     상대가 확인한 뒤 조용히 품목을 바꾸는 수법이었다. 잠근 뒤에도 바꿀 수 있으면
     잠금은 아무 의미가 없다.
     """
-    t = _load_trade(session, trade_id, body.player_id)
+    t = _load_trade(session, trade_id, me)
     if len(body.items) > MAX_TRADE_ITEMS:
         raise HTTPException(status_code=400, detail=f"품목이 너무 많다 — 최대 {MAX_TRADE_ITEMS}")
 
     payload = json.dumps([i.model_dump() for i in body.items], ensure_ascii=False)
-    if body.player_id == t.player_a:
+    if me == t.player_a:
         t.offer_a = payload
         t.stones_a = body.stones
     else:
@@ -537,7 +617,7 @@ async def set_offer(
     t.updated_at = utcnow()
 
     session.add(t)
-    _audit(session, t, body.player_id, "offer")
+    _audit(session, t, me, "offer")
     session.commit()
     session.refresh(t)
     await hub.notify(
@@ -550,13 +630,13 @@ async def set_offer(
 @app.post("/trades/{trade_id}/lock", response_model=TradeOut)
 async def lock_trade(
     trade_id: int,
-    body: ActorIn,
+    me: str = Depends(current_player),
     session: Session = Depends(get_session),
     hub: Hub = Depends(get_hub),
 ) -> TradeOut:
     """내 쪽을 잠근다. 둘 다 잠기면 확정할 수 있게 된다."""
-    t = _load_trade(session, trade_id, body.player_id)
-    if body.player_id == t.player_a:
+    t = _load_trade(session, trade_id, me)
+    if me == t.player_a:
         t.locked_a = True
     else:
         t.locked_b = True
@@ -565,7 +645,7 @@ async def lock_trade(
     t.updated_at = utcnow()
 
     session.add(t)
-    _audit(session, t, body.player_id, "lock")
+    _audit(session, t, me, "lock")
     session.commit()
     session.refresh(t)
     await hub.notify(
@@ -578,7 +658,7 @@ async def lock_trade(
 @app.post("/trades/{trade_id}/confirm", response_model=TradeOut)
 async def confirm_trade(
     trade_id: int,
-    body: ActorIn,
+    me: str = Depends(current_player),
     session: Session = Depends(get_session),
     hub: Hub = Depends(get_hub),
 ) -> TradeOut:
@@ -587,11 +667,11 @@ async def confirm_trade(
     확정은 **둘 다 잠근 뒤에만** 가능하다. 잠그지 않은 채 확정할 수 있으면
     한쪽이 확정한 뒤 다른 쪽이 내용을 바꾸는 길이 열린다.
     """
-    t = _load_trade(session, trade_id, body.player_id)
+    t = _load_trade(session, trade_id, me)
     if t.state is not TradeState.locked:
         raise HTTPException(status_code=409, detail="양쪽이 잠근 뒤에 확정할 수 있다")
 
-    if body.player_id == t.player_a:
+    if me == t.player_a:
         t.confirmed_a = True
     else:
         t.confirmed_b = True
@@ -603,7 +683,7 @@ async def confirm_trade(
     t.updated_at = utcnow()
 
     session.add(t)
-    _audit(session, t, body.player_id, action)
+    _audit(session, t, me, action)
     # 상태 변경과 감사 로그가 한 트랜잭션에 들어간다. 나뉘면 "교환은 됐는데
     # 기록이 없는" 순간이 생기고, 하필 그때 장애가 나면 복구할 근거가 사라진다.
     session.commit()
@@ -619,17 +699,17 @@ async def confirm_trade(
 @app.post("/trades/{trade_id}/cancel", response_model=TradeOut)
 async def cancel_trade(
     trade_id: int,
-    body: ActorIn,
+    me: str = Depends(current_player),
     session: Session = Depends(get_session),
     hub: Hub = Depends(get_hub),
 ) -> TradeOut:
     """취소한다. 성립 전이면 언제든 가능하다."""
-    t = _load_trade(session, trade_id, body.player_id)
+    t = _load_trade(session, trade_id, me)
     t.state = TradeState.cancelled
-    t.cancelled_by = body.player_id
+    t.cancelled_by = me
     t.updated_at = utcnow()
     session.add(t)
-    _audit(session, t, body.player_id, "cancelled")
+    _audit(session, t, me, "cancelled")
     session.commit()
     session.refresh(t)
     await hub.notify(
@@ -639,11 +719,13 @@ async def cancel_trade(
     return _trade_out(t)
 
 
-@app.get("/players/{player_id}/trades", response_model=list[TradeOut])
-def list_trades(player_id: str, session: Session = Depends(get_session)) -> list[TradeOut]:
+@app.get("/trades", response_model=list[TradeOut])
+def list_trades(
+    me: str = Depends(current_player), session: Session = Depends(get_session)
+) -> list[TradeOut]:
     rows = session.exec(
         select(Trade)
-        .where((Trade.player_a == player_id) | (Trade.player_b == player_id))
+        .where((Trade.player_a == me) | (Trade.player_b == me))
         .order_by(Trade.id.desc())  # type: ignore[union-attr]
     ).all()
     return [_trade_out(t) for t in rows]
@@ -653,12 +735,12 @@ def list_trades(player_id: str, session: Session = Depends(get_session)) -> list
 
 
 class GuildCreate(BaseModel):
+    """길드를 연다. 길드장은 토큰이 정한다."""
+
     name: str = Field(min_length=1, max_length=32)
-    leader_id: str = Field(min_length=1, max_length=64)
 
 
 class LeaderIn(BaseModel):
-    player_id: str = Field(min_length=1, max_length=64)
     new_leader_id: str = Field(min_length=1, max_length=64)
 
 
@@ -699,38 +781,50 @@ def _require_guild(session: Session, guild_id: int) -> Guild:
 
 
 @app.post("/guilds", response_model=GuildOut, status_code=201)
-def create_guild(body: GuildCreate, session: Session = Depends(get_session)) -> GuildOut:
+def create_guild(
+    body: GuildCreate,
+    me: str = Depends(current_player),
+    session: Session = Depends(get_session),
+) -> GuildOut:
     if session.exec(select(Guild).where(Guild.name == body.name)).first():
         raise HTTPException(status_code=409, detail="같은 이름의 길드가 있다")
-    if session.exec(select(GuildMember).where(GuildMember.player_id == body.leader_id)).first():
+    if session.exec(select(GuildMember).where(GuildMember.player_id == me)).first():
         raise HTTPException(status_code=409, detail="이미 다른 길드에 속해 있다")
 
-    g = Guild(name=body.name, leader_id=body.leader_id)
+    g = Guild(name=body.name, leader_id=me)
     session.add(g)
     session.commit()
     session.refresh(g)
-    session.add(GuildMember(guild_id=g.id or 0, player_id=body.leader_id, role="leader"))
+    session.add(GuildMember(guild_id=g.id or 0, player_id=me, role="leader"))
     session.commit()
     return _guild_out(session, g)
 
 
 @app.post("/guilds/{guild_id}/join", response_model=GuildOut)
-def join_guild(guild_id: int, body: ActorIn, session: Session = Depends(get_session)) -> GuildOut:
+def join_guild(
+    guild_id: int,
+    me: str = Depends(current_player),
+    session: Session = Depends(get_session),
+) -> GuildOut:
     g = _require_guild(session, guild_id)
-    if session.exec(select(GuildMember).where(GuildMember.player_id == body.player_id)).first():
+    if session.exec(select(GuildMember).where(GuildMember.player_id == me)).first():
         raise HTTPException(status_code=409, detail="이미 다른 길드에 속해 있다")
-    session.add(GuildMember(guild_id=guild_id, player_id=body.player_id))
+    session.add(GuildMember(guild_id=guild_id, player_id=me))
     session.commit()
     return _guild_out(session, g)
 
 
 @app.post("/guilds/{guild_id}/leave", response_model=GuildOut)
-def leave_guild(guild_id: int, body: ActorIn, session: Session = Depends(get_session)) -> GuildOut:
+def leave_guild(
+    guild_id: int,
+    me: str = Depends(current_player),
+    session: Session = Depends(get_session),
+) -> GuildOut:
     g = _require_guild(session, guild_id)
-    if g.leader_id == body.player_id:
+    if g.leader_id == me:
         # 길드장이 그냥 나가면 주인 없는 길드가 남는다. 넘기고 나가야 한다.
         raise HTTPException(status_code=409, detail="길드장은 먼저 길드장을 넘겨야 한다")
-    m = _member_row(session, guild_id, body.player_id)
+    m = _member_row(session, guild_id, me)
     if m is None:
         raise HTTPException(status_code=404, detail="길드원이 아니다")
     session.delete(m)
@@ -739,15 +833,20 @@ def leave_guild(guild_id: int, body: ActorIn, session: Session = Depends(get_ses
 
 
 @app.post("/guilds/{guild_id}/leader", response_model=GuildOut)
-def hand_over(guild_id: int, body: LeaderIn, session: Session = Depends(get_session)) -> GuildOut:
+def hand_over(
+    guild_id: int,
+    body: LeaderIn,
+    me: str = Depends(current_player),
+    session: Session = Depends(get_session),
+) -> GuildOut:
     g = _require_guild(session, guild_id)
-    if g.leader_id != body.player_id:
+    if g.leader_id != me:
         raise HTTPException(status_code=403, detail="길드장만 넘길 수 있다")
     target = _member_row(session, guild_id, body.new_leader_id)
     if target is None:
         raise HTTPException(status_code=404, detail="길드원이 아니다")
 
-    old = _member_row(session, guild_id, body.player_id)
+    old = _member_row(session, guild_id, me)
     if old is not None:
         old.role = "member"
         session.add(old)
@@ -759,32 +858,64 @@ def hand_over(guild_id: int, body: LeaderIn, session: Session = Depends(get_sess
     return _guild_out(session, g)
 
 
-@app.get("/guilds/{guild_id}", response_model=GuildOut)
-def get_guild(guild_id: int, session: Session = Depends(get_session)) -> GuildOut:
-    return _guild_out(session, _require_guild(session, guild_id))
-
-
-@app.get("/players/{player_id}/guild", response_model=GuildOut)
-def my_guild(player_id: str, session: Session = Depends(get_session)) -> GuildOut:
-    m = session.exec(select(GuildMember).where(GuildMember.player_id == player_id)).first()
+@app.get("/guilds/mine", response_model=GuildOut)
+def my_guild(
+    me: str = Depends(current_player), session: Session = Depends(get_session)
+) -> GuildOut:
+    m = session.exec(select(GuildMember).where(GuildMember.player_id == me)).first()
     if m is None:
         raise HTTPException(status_code=404, detail="길드가 없다")
     return _guild_out(session, _require_guild(session, m.guild_id))
 
 
+# guild_id가 int라 "mine"은 애초에 이 라우트에 매치되지 않지만, 순서를
+# 뒤바꿔 두는 편이 안전하다 — 나중에 guild_id를 문자열 슬러그로 바꾸면
+# 그 즉시 /guilds/mine이 /guilds/{guild_id}에 먹힌다.
+@app.get("/guilds/{guild_id}", response_model=GuildOut)
+def get_guild(guild_id: int, session: Session = Depends(get_session)) -> GuildOut:
+    return _guild_out(session, _require_guild(session, guild_id))
+
+
 # ─────────────── 실시간 ───────────────
 
 
-@app.websocket("/ws/{player_id}")
+@app.websocket("/ws")
 async def websocket_endpoint(
-    websocket: WebSocket, player_id: str, hub: Hub = Depends(get_hub)
+    websocket: WebSocket,
+    token: str,
+    hub: Hub = Depends(get_hub),
+    session: Session = Depends(get_session),
 ) -> None:
     """접속 하나.
+
+    경로에 player_id를 받지 않는다. 예전엔 받았고, 그러면 아무 이름으로나 접속해
+    남의 거래·대전 알림을 가로채거나 남의 이름으로 채팅을 보낼 수 있었다.
+
+    토큰은 쿼리 문자열로 받는다(`/ws?token=...`) — 브라우저 WebSocket API는 연결
+    시 커스텀 헤더를 못 붙이므로 `Authorization` 헤더를 쓸 방법이 없다. 접속
+    URL이 로그에 남을 수 있다는 절충은 있지만, 실시간 통로는 애초에 위치·채팅만
+    오가고 전투·거래처럼 검증이 필요한 상태 변경은 HTTP로만 가게 설계했다.
+
+    세션은 `Depends(get_session)`으로 받는다. 처음엔 `Session(engine)`을 직접
+    열었는데, 그러면 테스트가 `get_session`을 갈아끼워도 이 핸들러만 진짜 DB에
+    붙어서 방금 만든 계정을 못 찾고 연결이 매번 끊겼다 — FastAPI는 WebSocket
+    핸들러에서도 의존성 주입을 지원하므로 다른 라우트와 똑같이 받으면 된다.
 
     프로토콜은 최소한이다 — 방에 들어가고, 위치를 알리고, 말을 한다. 게임 상태는
     이 통로로 오가지 않는다. 위치와 대화가 조작돼도 남의 게임이 망가지지 않지만
     전투 결과는 그렇지 않기 때문이다. 그건 /duels로 간다.
     """
+    try:
+        player_id = resolve_token(session, token)
+    except HTTPException:
+        await websocket.close(code=4401)
+        return
+    finally:
+        # 접속 내내 DB 커넥션을 붙들 이유가 없다 — 토큰 확인이 끝나면 놓는다.
+        # 세션 객체 자체는 살아 있지만(아래 코드가 다시 쓰지 않는다), 연결
+        # 풀에서는 반납된다.
+        session.close()
+
     await hub.connect(player_id, websocket)
     try:
         while True:
